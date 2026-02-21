@@ -129,6 +129,6 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
-#dataTable {
+.table-wrap.data-entry{
   margin-top: 32px;
 }
