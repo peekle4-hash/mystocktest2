@@ -129,3 +129,10 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
+#holdTableClosed {
+  margin-bottom: 32px;
+}
+
+#dataTable {
+  margin-top: 32px;
+}
