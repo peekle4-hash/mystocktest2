@@ -131,7 +131,7 @@ function computeLedger(rows, asOfIso) {
   const monthReal = new Map();
 
   const getPos = (key) => {
-    if (!pos.has(key)) pos.set(key, { qty: 0, avg: 0, realizedCum: 0, lastClose: NaN, company: "", account: "" });
+    if (!pos.has(key)) pos.set(key, { qty: 0, avg: 0, realizedCum: 0, lastClose: NaN, company: "", account: "", trades: 0 });
     return pos.get(key);
   };
 
@@ -151,6 +151,8 @@ function computeLedger(rows, asOfIso) {
     const p = getPos(key);
     p.company = company;
     p.account = account;
+    if (company) p.trades = (p.trades || 0) + 1;
+
 
     let amount = NaN;
     let realized = 0;
@@ -283,7 +285,7 @@ function buildCloseTable(ledger) {
   const companies = getCompaniesInPortfolio(ledger);
   if (!companies.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="2" style="color:#64748b">기업명을 입력하면 여기에서 기준일 종가를 한 번만 입력할 수 있어요.</td>`;
+    tr.innerHTML = `<td colspan="3" style="color:#64748b">기업명을 입력하면 여기에서 기준일 종가를 한 번만 입력할 수 있어요.</td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -294,22 +296,27 @@ function buildCloseTable(ledger) {
     tr.innerHTML = `
       <td style="text-align:left">${c}</td>
       <td><input type="number" step="any" data-close-company="${c}" value="${Number.isFinite(v) ? v : ""}" placeholder="미입력은 -"></td>
+      <td style="color:#475569; font-variant-numeric: tabular-nums">${asOfIso}</td>
     `;
     tbody.appendChild(tr);
   }
 
+  // IMPORTANT: 입력 중 포커스가 날아가지 않게, 여기서는 renderFull()을 호출하지 않음.
+  // closeMap만 업데이트하고, 파생(평가손익/대시보드)만 다시 계산한다.
   tbody.querySelectorAll("input[data-close-company]").forEach((inp) => {
     inp.addEventListener("input", () => {
       const company = inp.getAttribute("data-close-company");
       const v = Number(inp.value);
       if (inp.value === "") setCloseFor(asOfIso, company, NaN);
       else setCloseFor(asOfIso, company, v);
-      renderFull(); // recompute unrealized with new close
+
+      const ledger2 = computeLedger(rows, asOfIso);
+      updateDerived(ledger2);
     });
   });
 }
 
-function applyBulkClose() {
+function applyBulkClose() {() {
   const asOfIso = $("asOfDate").value || todayISO();
   const text = ($("bulkClose").value || "").trim();
   if (!text) return;
@@ -372,11 +379,8 @@ function setKpi(id, value) {
 // --- Rendering: grouped by date (desc) ---
 let holdScope = "ALL"; // ALL | ISA | GEN
 
-function buildHoldTable(ledger) {
-  const tbody = $("holdTable").querySelector("tbody");
-  tbody.innerHTML = "";
-
-  const items = Array.from(ledger.positions.values())
+function buildHoldTables(ledger) {
+  const allItems = Array.from(ledger.positions.values())
     .filter(p => (p.company || "").trim().length > 0)
     .filter(p => {
       if (holdScope === "ISA") return p.account === "ISA";
@@ -389,13 +393,31 @@ function buildHoldTable(ledger) {
       const unreal = (Number.isFinite(close) ? (close - p.avg) * p.qty : NaN);
       const total = (Number.isFinite(unreal) ? unreal : 0) + p.realizedCum;
       const ret = (cost !== 0) ? (total / cost) : NaN;
-      return { ...p, cost, unreal, total, ret, close };
-    })
+      const trades = Number(p.trades || 0);
+      return { ...p, cost, unreal, total, ret, close, trades };
+    });
+
+  const current = allItems
+    .filter(p => p.qty > 0)
     .sort((a,b)=> (b.cost - a.cost) || a.company.localeCompare(b.company));
+
+  const closed = allItems
+    .filter(p => p.qty === 0 && p.trades > 0)
+    .sort((a,b)=> (b.realizedCum - a.realizedCum) || a.company.localeCompare(b.company));
+
+  renderHoldTableTo("holdTableCurrent", current, "거래를 입력하면 보유중인 종목이 여기에 표시돼요.");
+  renderHoldTableTo("holdTableClosed", closed, "전량 매도한 종목이 여기에 표시돼요.");
+}
+
+function renderHoldTableTo(tableId, items, emptyMsg) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+  const tbody = table.querySelector("tbody");
+  tbody.innerHTML = "";
 
   if (!items.length) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="10" style="color:#64748b">거래를 입력하면 보유현황이 여기에 표시돼요.</td>`;
+    tr.innerHTML = `<td colspan="10" style="color:#64748b">${emptyMsg}</td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -842,7 +864,7 @@ function updateDerived(ledger) {
   setSignedKpi("kpiUnrealGEN", gen.unreal, fmtMoney);
   setSignedKpi("kpiRealGEN", gen.real, fmtMoney);
 
-  buildHoldTable(ledger);
+  buildHoldTables(ledger);
 
   // monthly
   const monthArr = Array.from(ledger.monthReal.values()).sort((a,b)=>a.ym.localeCompare(b.ym));
