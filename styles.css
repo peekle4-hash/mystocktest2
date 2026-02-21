@@ -77,16 +77,34 @@ tr.group-hidden{display:none}
 .row-actions button.mini-danger{background:#b91c1c;border-color:#b91c1c;color:#fff}
 
 /* 월별 표 구분 */
-#monthlyTable th:nth-child(2), #monthlyTable td:nth-child(2){background:#eef6ff}
-#monthlyTable th:nth-child(3), #monthlyTable td:nth-child(3){background:#fff2f2}
-#monthlyTable th:nth-child(4), #monthlyTable td:nth-child(4){background:#fff7e6}
-#monthlyTable th:nth-child(2), #monthlyTable td:nth-child(2){border-left:2px solid #cbd5e1}
-#monthlyTable thead th:nth-child(2){background:#dbeafe}
-#monthlyTable thead th:nth-child(3){background:#fee2e2}
-#monthlyTable thead th:nth-child(4){background:#ffedd5}
+#monthlyTable th:nth-child(n+2):nth-child(-n+4),
+#monthlyTable td:nth-child(n+2):nth-child(-n+4){background:#eef6ff}  /* ISA */
+#monthlyTable th:nth-child(n+5):nth-child(-n+7),
+#monthlyTable td:nth-child(n+5):nth-child(-n+7){background:#fff2f2}  /* 일반 */
+#monthlyTable th:nth-child(n+8):nth-child(-n+10),
+#monthlyTable td:nth-child(n+8):nth-child(-n+10){background:#fff7e6} /* 전체 */
 
+/* 누적(마지막 3칸) */
+#monthlyTable th:nth-child(11), #monthlyTable td:nth-child(11){background:#eef6ff}  /* ISA 누적 */
+#monthlyTable th:nth-child(12), #monthlyTable td:nth-child(12){background:#fff2f2}  /* 일반 누적 */
+#monthlyTable th:nth-child(13), #monthlyTable td:nth-child(13){background:#fff7e6}  /* 전체 누적 */
+
+/* 그룹 구분선 */
+#monthlyTable th:nth-child(2),  #monthlyTable td:nth-child(2),
+#monthlyTable th:nth-child(5),  #monthlyTable td:nth-child(5),
+#monthlyTable th:nth-child(8),  #monthlyTable td:nth-child(8),
+#monthlyTable th:nth-child(11), #monthlyTable td:nth-child(11){border-left:2px solid #cbd5e1}
+
+/* 헤더는 조금 더 진하게 */
+#monthlyTable thead th:nth-child(n+2):nth-child(-n+4){background:#dbeafe}
+#monthlyTable thead th:nth-child(n+5):nth-child(-n+7){background:#fee2e2}
+#monthlyTable thead th:nth-child(n+8):nth-child(-n+10){background:#ffedd5}
+#monthlyTable thead th:nth-child(11){background:#dbeafe}
+#monthlyTable thead th:nth-child(12){background:#fee2e2}
+#monthlyTable thead th:nth-child(13){background:#ffedd5}
 
 /* ===== 컴팩트 UI ===== */
+
 .table-wrap.data-entry{
   max-height:480px;
   overflow-y:auto;
@@ -129,6 +147,3 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
-.table-wrap.data-entry{
-  margin-top: 32px;
-}

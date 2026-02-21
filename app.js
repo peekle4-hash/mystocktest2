@@ -834,11 +834,11 @@ function renderCharts(monthArr) {
       labels,
       datasets: [
         { label: "ISA 월 수익률(%)", data: isa, borderRadius: 10, borderSkipped: false,
-          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#3b82f6" : "#ef4444") },
+          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#3b82f6" : "#93c5fd") },
         { label: "일반 월 수익률(%)", data: gen, borderRadius: 10, borderSkipped: false,
-          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f43f5e" : "#ef4444") },
+          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f43f5e" : "#fda4af") },
         { label: "전체 월 수익률(%)", data: all, borderRadius: 10, borderSkipped: false,
-          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f59e0b" : "#ef4444") },
+          backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f59e0b" : "#fcd34d") },
       ]
     },
     options: {
