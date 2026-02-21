@@ -993,7 +993,34 @@ function updateDerived(ledger) {
   setSignedKpi("kpiUnrealGEN", gen.unreal, fmtMoney);
   setSignedKpi("kpiRealGEN", gen.real, fmtMoney);
   setSignedKpi("kpiRetGEN", gen.ret, fmtPct);   // ✅ 추가
+<!-- 일반 KPI -->
+<div class="kpi-grid-3">
+  <div class="kpi kpi-gen">
+    <div class="kpi-title">보유 원가(일반)</div>
+    <div class="kpi-val" id="kpiCostGEN">-</div>
+  </div>
 
+  <div class="kpi kpi-gen">
+    <div class="kpi-title">평가손익(일반)</div>
+    <div class="kpi-val" id="kpiUnrealGEN">-</div>
+  </div>
+
+  <div class="kpi kpi-gen">
+    <div class="kpi-title">실현손익 누적(일반)</div>
+    <div class="kpi-val" id="kpiRealGEN">-</div>
+  </div>
+
+  <!-- 🔴 추가 -->
+  <div class="kpi kpi-gen">
+    <div class="kpi-title">총 수익률(일반)</div>
+    <div class="kpi-val" id="kpiRetGEN">-</div>
+  </div>
+
+  <div class="kpi kpi-gen">
+    <div class="kpi-title">보유 수익률(일반)</div>
+    <div class="kpi-val" id="kpiHoldRetGEN">-</div>
+  </div>
+</div>
   buildHoldTables(ledger);
 
   // monthly (투자금액/손익/수익률)
