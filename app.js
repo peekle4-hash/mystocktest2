@@ -121,7 +121,7 @@ function moveRow(from, to) {
 // --- Ledger compute (moving average cost) ---
 // Returns:
 // { perRow: Map(index -> {amount, realized, cumReal}), positions: Map(key->pos), monthReal: Map(ym->{ISA,GEN,ALL}) }
-function computeLedger(rows, asOfIso) {
+function computeLedger(rows, asOfIso, cutoffIso = asOfIso) {
   // Process in chronological order (date asc, then original index asc) for correct realized calc.
   const order = rows.map((r, idx) => ({ r, idx, date: (r.date || "").trim() }))
     .sort((a,b)=> (a.date || "").localeCompare(b.date || "") || (a.idx - b.idx));
@@ -140,6 +140,7 @@ function computeLedger(rows, asOfIso) {
     const idx = it.idx;
 
     const date = (r.date || "").trim();
+    if (cutoffIso && date && date > cutoffIso) continue;
     const company = (r.company || "").trim();
     const account = normalizeAccount(r.account);
     const side = normalizeSide(r.side);
@@ -670,6 +671,123 @@ const valueLabelPlugin = {
   }
 };
 
+function getMonthEndDate(ym) {
+  // Prefer last date in closeMap within the month (YYYY-MM-DD)
+  const dates = Object.keys(closeMap || {}).filter(d => d && d.startsWith(ym));
+  dates.sort(); // ISO string sort asc
+  for (let i = dates.length - 1; i >= 0; i--) {
+    const d = dates[i];
+    const obj = closeMap[d];
+    if (obj && Object.keys(obj).length > 0) return d;
+  }
+  return null;
+}
+
+function computeMonthlySummary(rows) {
+  // Collect months from trades (YYYY-MM)
+  const months = new Set();
+  for (const r of rows) {
+    const d = (r.date || "").trim();
+    if (d && d.length >= 7) months.add(d.slice(0, 7));
+  }
+  const yms = Array.from(months).sort();
+
+  // Realized + Invest (buy amount) by month/account
+  const realizedByMonth = new Map(); // ym -> {isa, gen}
+  const investByMonth = new Map();   // ym -> {isa, gen}
+
+  // We need realized per row => compute once (no cutoff needed for per-row realized, it is tied to trade)
+  const ledgerAll = computeLedger(rows, $("asOfDate")?.value || todayISO(), null);
+
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const d = (r.date || "").trim();
+    if (!d || d.length < 7) continue;
+    const ym = d.slice(0, 7);
+    const account = normalizeAccount(r.account);
+    const side = normalizeSide(r.side);
+    const price = num(r.price);
+    const qty = num(r.qty);
+
+    if (!investByMonth.has(ym)) investByMonth.set(ym, { isa: 0, gen: 0 });
+    if (!realizedByMonth.has(ym)) realizedByMonth.set(ym, { isa: 0, gen: 0 });
+
+    if (side === "BUY" && Number.isFinite(price) && Number.isFinite(qty)) {
+      const amt = price * qty;
+      if (account === "ISA") investByMonth.get(ym).isa += amt;
+      if (account === "일반") investByMonth.get(ym).gen += amt;
+    }
+
+    const pr = ledgerAll.perRow.get(i);
+    const realized = pr && Number.isFinite(pr.realized) ? pr.realized : 0;
+    if (account === "ISA") realizedByMonth.get(ym).isa += realized;
+    if (account === "일반") realizedByMonth.get(ym).gen += realized;
+  }
+
+  // Build final month array with unrealized at month end
+  let cumIsaInvest = 0, cumGenInvest = 0, cumIsaPnl = 0, cumGenPnl = 0;
+
+  const out = [];
+  for (const ym of yms) {
+    const endDate = getMonthEndDate(ym);
+    // If no close date exists for that month, we cannot compute month-end unrealized
+    let unrealIsa = NaN, unrealGen = NaN;
+    if (endDate) {
+      const led = computeLedger(rows, endDate, endDate);
+      let uIsa = 0, uGen = 0;
+      for (const p of led.positions.values()) {
+        const qty = p.qty;
+        if (!Number.isFinite(qty) || qty <= 0) continue;
+        const close = p.lastClose;
+        if (!Number.isFinite(close)) continue;
+        const avg = p.avg;
+        const unreal = (close - (Number.isFinite(avg) ? avg : 0)) * qty;
+        if (p.account === "ISA") uIsa += unreal;
+        if (p.account === "일반") uGen += unreal;
+      }
+      unrealIsa = uIsa;
+      unrealGen = uGen;
+    }
+
+    const inv = investByMonth.get(ym) || { isa: 0, gen: 0 };
+    const real = realizedByMonth.get(ym) || { isa: 0, gen: 0 };
+
+    const isaInvest = inv.isa;
+    const genInvest = inv.gen;
+    const isaPnl = real.isa + (Number.isFinite(unrealIsa) ? unrealIsa : 0);
+    const genPnl = real.gen + (Number.isFinite(unrealGen) ? unrealGen : 0);
+
+    const allInvest = isaInvest + genInvest;
+    const allPnl = isaPnl + genPnl;
+
+    const isaRoi = isaInvest > 0 ? isaPnl / isaInvest : NaN;
+    const genRoi = genInvest > 0 ? genPnl / genInvest : NaN;
+    const allRoi = allInvest > 0 ? allPnl / allInvest : NaN;
+
+    cumIsaInvest += isaInvest;
+    cumGenInvest += genInvest;
+    cumIsaPnl += isaPnl;
+    cumGenPnl += genPnl;
+
+    const cumAllInvest = cumIsaInvest + cumGenInvest;
+    const cumAllPnl = cumIsaPnl + cumGenPnl;
+
+    const isaCumRoi = cumIsaInvest > 0 ? cumIsaPnl / cumIsaInvest : NaN;
+    const genCumRoi = cumGenInvest > 0 ? cumGenPnl / cumGenInvest : NaN;
+    const allCumRoi = cumAllInvest > 0 ? cumAllPnl / cumAllInvest : NaN;
+
+    out.push({
+      ym,
+      isaInvest, isaPnl, isaRoi,
+      genInvest, genPnl, genRoi,
+      allInvest, allPnl, allRoi,
+      isaCumRoi, genCumRoi, allCumRoi,
+      endDate: endDate || ""
+    });
+  }
+  return out;
+}
+
 function renderMonthlyTable(monthArr) {
   const tbody = $("monthlyTable").querySelector("tbody");
   tbody.innerHTML = "";
@@ -677,9 +795,18 @@ function renderMonthlyTable(monthArr) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${it.ym}</td>
-      <td>${fmtMoney(it.ISA)}</td>
-      <td>${fmtMoney(it.GEN)}</td>
-      <td>${fmtMoney(it.ALL)}</td>
+      <td>${fmtMoney(it.isaInvest)}</td>
+      <td>${fmtMoney(it.isaPnl)}</td>
+      <td>${Number.isFinite(it.isaRoi) ? fmtPct(it.isaRoi) : "-"}</td>
+      <td>${fmtMoney(it.genInvest)}</td>
+      <td>${fmtMoney(it.genPnl)}</td>
+      <td>${Number.isFinite(it.genRoi) ? fmtPct(it.genRoi) : "-"}</td>
+      <td>${fmtMoney(it.allInvest)}</td>
+      <td>${fmtMoney(it.allPnl)}</td>
+      <td>${Number.isFinite(it.allRoi) ? fmtPct(it.allRoi) : "-"}</td>
+      <td>${Number.isFinite(it.isaCumRoi) ? fmtPct(it.isaCumRoi) : "-"}</td>
+      <td>${Number.isFinite(it.genCumRoi) ? fmtPct(it.genCumRoi) : "-"}</td>
+      <td>${Number.isFinite(it.allCumRoi) ? fmtPct(it.allCumRoi) : "-"}</td>
     `;
     tbody.appendChild(tr);
   }
@@ -687,17 +814,15 @@ function renderMonthlyTable(monthArr) {
 
 function renderCharts(monthArr) {
   const labels = monthArr.map(x => x.ym);
-  const isa = monthArr.map(x => x.ISA);
-  const gen = monthArr.map(x => x.GEN);
-  const all = monthArr.map(x => x.ALL);
 
-  // cumulative
-  let cISA = 0, cGEN = 0, cALL = 0;
-  const cumISA = [], cumGEN = [], cumALL = [];
-  for (const it of monthArr) {
-    cISA += it.ISA; cGEN += it.GEN; cALL += it.ALL;
-    cumISA.push(cISA); cumGEN.push(cGEN); cumALL.push(cALL);
-  }
+  // monthly ROI in percentage points for chart labels
+  const isa = monthArr.map(x => Number.isFinite(x.isaRoi) ? x.isaRoi * 100 : NaN);
+  const gen = monthArr.map(x => Number.isFinite(x.genRoi) ? x.genRoi * 100 : NaN);
+  const all = monthArr.map(x => Number.isFinite(x.allRoi) ? x.allRoi * 100 : NaN);
+
+  const cumISA = monthArr.map(x => Number.isFinite(x.isaCumRoi) ? x.isaCumRoi * 100 : NaN);
+  const cumGEN = monthArr.map(x => Number.isFinite(x.genCumRoi) ? x.genCumRoi * 100 : NaN);
+  const cumALL = monthArr.map(x => Number.isFinite(x.allCumRoi) ? x.allCumRoi * 100 : NaN);
 
   if (barChart) barChart.destroy();
   if (lineChart) lineChart.destroy();
@@ -708,11 +833,11 @@ function renderCharts(monthArr) {
     data: {
       labels,
       datasets: [
-        { label: "ISA 월 실현손익", data: isa, borderRadius: 10, borderSkipped: false,
+        { label: "ISA 월 수익률(%)", data: isa, borderRadius: 10, borderSkipped: false,
           backgroundColor: (ctx) => (ctx.raw >= 0 ? "#3b82f6" : "#ef4444") },
-        { label: "일반 월 실현손익", data: gen, borderRadius: 10, borderSkipped: false,
+        { label: "일반 월 수익률(%)", data: gen, borderRadius: 10, borderSkipped: false,
           backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f43f5e" : "#ef4444") },
-        { label: "전체 월 실현손익", data: all, borderRadius: 10, borderSkipped: false,
+        { label: "전체 월 수익률(%)", data: all, borderRadius: 10, borderSkipped: false,
           backgroundColor: (ctx) => (ctx.raw >= 0 ? "#f59e0b" : "#ef4444") },
       ]
     },
@@ -720,8 +845,9 @@ function renderCharts(monthArr) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)}` } }
-      }
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtChartPct(ctx.parsed.y)}` } }
+      },
+      scales: { y: { ticks: { callback: (v) => v + "%" } } }
     }
   });
 
@@ -730,17 +856,18 @@ function renderCharts(monthArr) {
     data: {
       labels,
       datasets: [
-        { label: "ISA 누적 실현손익", data: cumISA, tension: 0.25, borderColor:"#2563eb", pointBackgroundColor:"#2563eb", pointBorderColor:"#2563eb", pointRadius:3, pointHoverRadius:4, fill:false },
-        { label: "일반 누적 실현손익", data: cumGEN, tension: 0.25, borderColor:"#dc2626", pointBackgroundColor:"#dc2626", pointBorderColor:"#dc2626", pointRadius:3, pointHoverRadius:4, fill:false },
-        { label: "전체 누적 실현손익", data: cumALL, tension: 0.25, borderColor:"#ea580c", pointBackgroundColor:"#ea580c", pointBorderColor:"#ea580c", pointRadius:3, pointHoverRadius:4, fill:false },
+        { label: "ISA 누적(%)", data: cumISA, tension: 0.25, borderColor:"#2563eb", pointBackgroundColor:"#2563eb", pointBorderColor:"#2563eb", pointRadius:3, pointHoverRadius:4, fill:false },
+        { label: "일반 누적(%)", data: cumGEN, tension: 0.25, borderColor:"#dc2626", pointBackgroundColor:"#dc2626", pointBorderColor:"#dc2626", pointRadius:3, pointHoverRadius:4, fill:false },
+        { label: "전체 누적(%)", data: cumALL, tension: 0.25, borderColor:"#ea580c", pointBackgroundColor:"#ea580c", pointBorderColor:"#ea580c", pointRadius:3, pointHoverRadius:4, fill:false },
       ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)}` } }
-      }
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtChartPct(ctx.parsed.y)}` } }
+      },
+      scales: { y: { ticks: { callback: (v) => v + "%" } } }
     }
   });
 }
@@ -866,8 +993,8 @@ function updateDerived(ledger) {
 
   buildHoldTables(ledger);
 
-  // monthly
-  const monthArr = Array.from(ledger.monthReal.values()).sort((a,b)=>a.ym.localeCompare(b.ym));
+  // monthly (투자금액/손익/수익률)
+  const monthArr = computeMonthlySummary(rows);
   renderMonthlyTable(monthArr);
   renderCharts(monthArr);
 }
