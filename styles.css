@@ -129,16 +129,3 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
-
-/* 기준일 종가 입력 - 개별 입력 UI */
-.close-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.close-individual,.close-list{padding:10px;border:1px solid #e5e7eb;border-radius:14px;background:#fff}
-.label{min-width:90px;font-size:12px;color:#334155}
-#closeCompanySelect{width:100%}
-#closePriceInput{width:160px;min-width:120px}
-.bulk-details{margin-top:10px}
-.bulk-details summary{cursor:pointer;color:#334155}
-@media (max-width: 900px){
-  .close-grid{grid-template-columns:1fr}
-  #closePriceInput{width:100%}
-}

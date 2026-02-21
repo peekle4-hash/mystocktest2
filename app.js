@@ -309,75 +309,6 @@ function buildCloseTable(ledger) {
   });
 }
 
-
-function normalizeCompanyKey(s){
-  return (s||"").toLowerCase().replace(/\s+/g,"").replace(/[^a-z0-9가-힣]/g,"");
-}
-
-function getAllCompaniesFromRows(){
-  const s = new Set();
-  for (const r of rows){
-    const name = (r.company||"").trim();
-    if(name) s.add(name);
-  }
-  return Array.from(s).sort((a,b)=>a.localeCompare(b));
-}
-
-function refreshCloseCompanySelect(ledger){
-  const sel = $("closeCompanySelect");
-  if(!sel) return;
-  const companies = getCompaniesInPortfolio(ledger);
-  const fallback = getAllCompaniesFromRows();
-  const list = companies.length ? companies : fallback;
-
-  const prev = sel.value;
-  sel.innerHTML = "";
-  if(!list.length){
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "기업을 먼저 입력해줘";
-    sel.appendChild(opt);
-    $("closePriceInput").value = "";
-    return;
-  }
-  for(const c of list){
-    const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
-    sel.appendChild(opt);
-  }
-  sel.value = list.includes(prev) ? prev : list[0];
-  syncCloseInputFromSelect();
-}
-
-function syncCloseInputFromSelect(){
-  const asOfIso = $("asOfDate").value || todayISO();
-  const sel = $("closeCompanySelect");
-  const company = sel?.value || "";
-  const v = getCloseFor(asOfIso, company);
-  $("closePriceInput").value = Number.isFinite(v) ? v : "";
-}
-
-function saveCloseFromInput(){
-  const asOfIso = $("asOfDate").value || todayISO();
-  const company = ($("closeCompanySelect").value || "").trim();
-  if(!company) return;
-  const valRaw = $("closePriceInput").value;
-  const v = Number(valRaw);
-  if(valRaw === "" || !Number.isFinite(v)) return;
-  setCloseFor(asOfIso, company, v);
-  renderFull();
-}
-
-function deleteCloseForCompany(){
-  const asOfIso = $("asOfDate").value || todayISO();
-  const company = ($("closeCompanySelect").value || "").trim();
-  if(!company) return;
-  setCloseFor(asOfIso, company, NaN);
-  $("closePriceInput").value = "";
-  renderFull();
-}
-
 function applyBulkClose() {
   const asOfIso = $("asOfDate").value || todayISO();
   const text = ($("bulkClose").value || "").trim();
@@ -946,9 +877,6 @@ document.addEventListener("DOMContentLoaded", () => {
   $("addRowBtn").addEventListener("click", addEmptyRow);
   $("applyBulkCloseBtn").addEventListener("click", applyBulkClose);
   $("clearCloseBtn").addEventListener("click", clearCloseForDate);
-  $("saveCloseBtn").addEventListener("click", saveCloseFromInput);
-  $("deleteCloseBtn").addEventListener("click", deleteCloseForCompany);
-  $("closeCompanySelect").addEventListener("change", syncCloseInputFromSelect);
   $("exportBtn").addEventListener("click", exportCSV);
   $("clearBtn").addEventListener("click", clearAll);
   $("asOfDate").addEventListener("change", renderFull);

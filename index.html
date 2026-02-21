@@ -76,58 +76,35 @@
 
     <section class="card">
       <div class="row">
-        
-    <section class="card" id="closePanel">
-      <div class="row">
         <h2>기준일 종가 입력</h2>
         <div class="grow"></div>
-        <div class="hint">기준 날짜에 대해 기업별로 종가를 한 번만 입력하면 평가손익이 자동 계산돼요. (미입력은 -)</div>
+        <div class="hint">기준 날짜에 대해 종가를 기업별로 한 번만 입력하면 평가손익이 자동 계산돼요. (미입력은 -)</div>
       </div>
 
-      <div class="close-grid">
-        <div class="close-individual">
-          <div class="row">
-            <label class="label">기업 선택</label>
-            <select id="closeCompanySelect"></select>
-          </div>
-          <div class="row">
-            <label class="label">종가(기준일)</label>
-            <input id="closePriceInput" type="number" step="any" placeholder="예: 25120">
-            <button id="saveCloseBtn">저장</button>
-            <button id="deleteCloseBtn" class="secondary">이 기업 종가 지우기</button>
-          </div>
-          <div class="hint" style="margin-top:6px">※ 기준 날짜를 바꾸면 그 날짜에 저장된 종가가 자동으로 불러와져요.</div>
-        </div>
-
-        <div class="close-list">
-          <div class="row">
-            <b>저장된 종가 목록</b>
-            <div class="grow"></div>
-            <button id="clearCloseBtn" class="secondary">이 기준일 종가 전체 지우기</button>
-          </div>
-          <div class="table-wrap mini">
-            <table id="closeTable">
-              <thead>
-                <tr><th>기업명</th><th>종가(기준일)</th></tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-
-          <details class="bulk-details">
-            <summary>일괄 입력(선택)</summary>
-            <label for="bulkClose" class="label">한 줄에 하나: <code>기업명, 종가</code> 또는 <code>기업명 종가</code></label>
-            <textarea id="bulkClose" rows="4" placeholder="예)
+      <div class="row">
+        <div class="bulk-box">
+          <label for="bulkClose"><b>일괄 입력</b> (한 줄에 하나: <code>기업명, 종가</code> 또는 <code>기업명 종가</code>)</label>
+          <textarea id="bulkClose" rows="4" placeholder="예)
 삼성전자, 71500
 TIGER 미국S&P500 25120"></textarea>
-            <div class="row" style="margin-top:8px">
-              <button id="applyBulkCloseBtn">일괄 적용</button>
-            </div>
-          </details>
+          <div class="row" style="margin-top:8px">
+            <button id="applyBulkCloseBtn">일괄 적용</button>
+            <button id="clearCloseBtn" class="secondary">이 기준일 종가 전체 지우기</button>
+          </div>
         </div>
       </div>
-    </section>
 
+      <div class="table-wrap mini">
+        <table id="closeTable">
+          <thead>
+            <tr>
+              <th>기업명</th>
+              </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
 
 
     <section class="card">
