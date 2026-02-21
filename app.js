@@ -316,7 +316,7 @@ function buildCloseTable(ledger) {
   });
 }
 
-function applyBulkClose() {() {
+function applyBulkClose() {
   const asOfIso = $("asOfDate").value || todayISO();
   const text = ($("bulkClose").value || "").trim();
   if (!text) return;
