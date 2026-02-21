@@ -110,7 +110,12 @@ tr.group-hidden{display:none}
   overflow-y:auto;
   overflow-x:hidden;   /* 가로스크롤 제거 */
 }
-
+.table-wrap.data-entry{
+  margin-top: 32px;   /* ← 이 줄 추가 */
+  max-height:480px;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
 table{
   min-width:unset !important;
 }
