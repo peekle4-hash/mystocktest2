@@ -20,10 +20,12 @@ input[type="number"]{width:120px}
 select{padding:9px 10px}
 .hint{color:#64748b;font-size:12px;margin-left:6px}
 .note{margin-top:10px;color:#64748b;font-size:12px}
+
 .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:10px}
 .table-wrap.mini table{min-width:980px}
 .table-wrap.data-entry{max-height:420px;overflow:auto}
 @media (max-width:900px){.table-wrap.data-entry{max-height:320px} .table-wrap.mini table{min-width:900px}}
+
 table{border-collapse:collapse;width:100%;min-width:1180px}
 th,td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:center;font-size:13px;white-space:nowrap}
 th{background:#f1f5f9;color:#0f172a;position:sticky;top:0;z-index:1}
@@ -32,6 +34,7 @@ tbody tr:hover{background:#fafafa}
 .kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
 @media (max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:900px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
 .kpi{border:1px solid #e5e7eb;border-radius:12px;padding:10px;position:relative;box-shadow:0 1px 0 rgba(15,23,42,0.03),0 6px 18px rgba(15,23,42,0.06)}
 .kpi::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;border-top-left-radius:12px;border-top-right-radius:12px;background:#e5e7eb}
 .kpi-all{background:#fff7e6}
@@ -103,19 +106,25 @@ tr.group-hidden{display:none}
 #monthlyTable thead th:nth-child(12){background:#fee2e2}
 #monthlyTable thead th:nth-child(13){background:#ffedd5}
 
-/* ===== 컴팩트 UI ===== */
+/* ===== ISA/일반 KPI 4칸 그리드 ===== */
+.kpi-grid-3{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr)); /* 4칸 */
+  gap:10px;
+  margin-top:12px;
+}
+@media (max-width:900px){
+  .kpi-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
 
+/* ===== 컴팩트 UI ===== */
 .table-wrap.data-entry{
+  margin-top: 32px;
   max-height:480px;
   overflow-y:auto;
   overflow-x:hidden;   /* 가로스크롤 제거 */
 }
-.table-wrap.data-entry{
-  margin-top: 32px;   /* ← 이 줄 추가 */
-  max-height:480px;
-  overflow-y:auto;
-  overflow-x:hidden;
-}
+
 table{
   min-width:unset !important;
 }
@@ -125,9 +134,9 @@ th,td{
   font-size:12px;
 }
 
-input[type="text"], 
-input[type="number"], 
-input[type="date"], 
+input[type="text"],
+input[type="number"],
+input[type="date"],
 select{
   padding:5px 6px;
   font-size:12px;
@@ -141,20 +150,11 @@ select{
 }
 
 @media (max-width:1200px){
-  table{
-    min-width:unset !important;
-  }
+  table{min-width:unset !important;}
 }
-
 
 /* 종가 일괄 입력 */
 .bulk-box{width:100%}
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
-.kpi-grid-3{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:10px;
-  margin-top:12px;
-}
