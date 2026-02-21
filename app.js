@@ -854,6 +854,7 @@ function renderFull() {
   const iso = $("asOfDate").value || todayISO();
   const ledger = computeLedger(rows, iso);
   buildTable(rows, ledger);
+  buildCloseTable(ledger);
   updateDerived(ledger);
 }
 
