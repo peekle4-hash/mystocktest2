@@ -132,30 +132,6 @@ TIGER 미국S&P500 25120"></textarea>
 
     <section class="card">
       <div class="row">
-    <section class="card" id="watchlistPanel">
-      <div class="row">
-        <h2>투자기업 목록</h2>
-        <div class="grow"></div>
-        <button id="addWatchRowBtn" type="button">행 추가</button>
-      </div>
-      <div class="hint">투자기업 / 오늘 종가 / 기준일을 입력해두면, 나중에 참고하기 쉬워요.</div>
-
-      <div class="table-wrap">
-        <table id="watchlistTable">
-          <thead>
-            <tr>
-              <th style="width:45%">투자기업</th>
-              <th style="width:25%">오늘 종가</th>
-              <th style="width:25%">기준일</th>
-              <th style="width:5%"></th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
-
-
         <h2>데이터 입력 (매매기록)</h2>
         <div class="grow"></div>
         <div class="btns">
@@ -224,10 +200,6 @@ TIGER 미국S&P500 25120"></textarea>
       <div class="row">
         <h2>월별 수익률</h2>
         <div class="grow"></div>
-        <div class="seg">
-          <button id="graphModeRealizedBtn" class="seg-btn active" type="button">실현손익 보기</button>
-          <button id="graphModeTotalBtn" class="seg-btn" type="button">총수익률 보기</button>
-        </div>
         <div class="hint">월별 실현손익/평가손익 기반으로 추적</div>
       </div>
 
@@ -245,7 +217,6 @@ TIGER 미국S&P500 25120"></textarea>
         </table>
       </div>
 
-      <div id="monthlyModeNote" class="chart-note"></div>
       <div class="charts">
         <div class="chart">
           <canvas id="barMonthly"></canvas>

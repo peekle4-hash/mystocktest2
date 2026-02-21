@@ -142,9 +142,3 @@ textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;fon
   .close-grid{grid-template-columns:1fr}
   #closePriceInput{width:100%}
 }
-
-/* 투자기업 목록 */
-#watchlistTable input[type="text"]{width:100%}
-#watchlistTable input[type="number"]{width:100%}
-#watchlistTable input[type="date"]{width:100%}
-#watchlistTable td{vertical-align:middle}
