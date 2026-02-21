@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>주식 매매기록 · 수익률 대시보드</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>주식 매매기록 · 수익률 대시보드</h1>
+    <p class="sub">매수/매도 기록 · 실현/평가 손익 · ISA/일반 분리 · 날짜별 접기/펼치기 · CSV 백업</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="row">
+        <div>
+          <label for="asOfDate"><b>기준 날짜</b></label>
+          <input id="asOfDate" type="date" />
+        </div>
+        <div class="grow"></div>
+        <div class="hint">기준 날짜의 종가(평가가)를 입력하면 평가손익/수익률이 계산돼요.</div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi kpi-all">
+          <div class="kpi-title">보유 원가(전체)</div>
+          <div class="kpi-val" id="kpiCostAll">-</div>
+        </div>
+        <div class="kpi kpi-all">
+          <div class="kpi-title">평가손익(전체)</div>
+          <div class="kpi-val" id="kpiUnrealAll">-</div>
+        </div>
+        <div class="kpi kpi-all">
+          <div class="kpi-title">실현손익 누적(전체)</div>
+          <div class="kpi-val" id="kpiRealAll">-</div>
+        </div>
+        <div class="kpi kpi-all">
+          <div class="kpi-title">총 손익(전체)</div>
+          <div class="kpi-val" id="kpiTotalAll">-</div>
+        </div>
+        <div class="kpi kpi-all">
+          <div class="kpi-title">총 수익률(전체)</div>
+          <div class="kpi-val" id="kpiRetAll">-</div>
+        </div>
+
+        <div class="kpi kpi-isa">
+          <div class="kpi-title">보유 원가(ISA)</div>
+          <div class="kpi-val" id="kpiCostISA">-</div>
+        </div>
+        <div class="kpi kpi-isa">
+          <div class="kpi-title">평가손익(ISA)</div>
+          <div class="kpi-val" id="kpiUnrealISA">-</div>
+        </div>
+        <div class="kpi kpi-isa">
+          <div class="kpi-title">실현손익 누적(ISA)</div>
+          <div class="kpi-val" id="kpiRealISA">-</div>
+        </div>
+        <div class="kpi kpi-gen">
+          <div class="kpi-title">보유 원가(일반)</div>
+          <div class="kpi-val" id="kpiCostGEN">-</div>
+        </div>
+        <div class="kpi kpi-gen">
+          <div class="kpi-title">평가손익(일반)</div>
+          <div class="kpi-val" id="kpiUnrealGEN">-</div>
+        </div>
+        <div class="kpi kpi-gen">
+          <div class="kpi-title">실현손익 누적(일반)</div>
+          <div class="kpi-val" id="kpiRealGEN">-</div>
+        </div>
+      </div>
+      <div class="note">※ 계산 방식: <b>이동평균(평균단가)</b> 기준. 공매도/마이너스 보유수량은 지원 안 해요.</div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        
+    <section class="card" id="closePanel">
+      <div class="row">
+        <h2>기준일 종가 입력</h2>
+        <div class="grow"></div>
+        <div class="hint">기준 날짜에 대해 기업별로 종가를 한 번만 입력하면 평가손익이 자동 계산돼요. (미입력은 -)</div>
+      </div>
+
+      <div class="close-grid">
+        <div class="close-individual">
+          <div class="row">
+            <label class="label">기업 선택</label>
+            <select id="closeCompanySelect"></select>
+          </div>
+          <div class="row">
+            <label class="label">종가(기준일)</label>
+            <input id="closePriceInput" type="number" step="any" placeholder="예: 25120">
+            <button id="saveCloseBtn">저장</button>
+            <button id="deleteCloseBtn" class="secondary">이 기업 종가 지우기</button>
+          </div>
+          <div class="hint" style="margin-top:6px">※ 기준 날짜를 바꾸면 그 날짜에 저장된 종가가 자동으로 불러와져요.</div>
+        </div>
+
+        <div class="close-list">
+          <div class="row">
+            <b>저장된 종가 목록</b>
+            <div class="grow"></div>
+            <button id="clearCloseBtn" class="secondary">이 기준일 종가 전체 지우기</button>
+          </div>
+          <div class="table-wrap mini">
+            <table id="closeTable">
+              <thead>
+                <tr><th>기업명</th><th>종가(기준일)</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <details class="bulk-details">
+            <summary>일괄 입력(선택)</summary>
+            <label for="bulkClose" class="label">한 줄에 하나: <code>기업명, 종가</code> 또는 <code>기업명 종가</code></label>
+            <textarea id="bulkClose" rows="4" placeholder="예)
+삼성전자, 71500
+TIGER 미국S&P500 25120"></textarea>
+            <div class="row" style="margin-top:8px">
+              <button id="applyBulkCloseBtn">일괄 적용</button>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+
+
+    <section class="card">
+      <div class="row">
+    <section class="card" id="watchlistPanel">
+      <div class="row">
+        <h2>투자기업 목록</h2>
+        <div class="grow"></div>
+        <button id="addWatchRowBtn" type="button">행 추가</button>
+      </div>
+      <div class="hint">투자기업 / 오늘 종가 / 기준일을 입력해두면, 나중에 참고하기 쉬워요.</div>
+
+      <div class="table-wrap">
+        <table id="watchlistTable">
+          <thead>
+            <tr>
+              <th style="width:45%">투자기업</th>
+              <th style="width:25%">오늘 종가</th>
+              <th style="width:25%">기준일</th>
+              <th style="width:5%"></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+
+        <h2>데이터 입력 (매매기록)</h2>
+        <div class="grow"></div>
+        <div class="btns">
+          <button id="addRowBtn">행 추가</button>
+          <button id="exportBtn" class="secondary">CSV 내보내기</button>
+          <label class="file secondary">
+            CSV 가져오기
+            <input id="importFile" type="file" accept=".csv" />
+          </label>
+          <button id="clearBtn" class="danger">전체 삭제</button>
+        </div>
+        <div class="hint">입력: 날짜 / 기업명 / 계좌 / 매수·매도 / 단가 / 수량</div>
+      </div>
+
+      <div class="row summary-row">
+        <h3 class="h3">보유현황(기업별)</h3>
+        <div class="grow"></div>
+        <div class="seg">
+          <button id="holdScopeAll" class="seg-btn active" type="button">전체</button>
+          <button id="holdScopeISA" class="seg-btn" type="button">ISA</button>
+          <button id="holdScopeGEN" class="seg-btn" type="button">일반</button>
+        </div>
+      </div>
+
+      <div class="table-wrap mini">
+        <table id="holdTable">
+          <thead>
+            <tr>
+              <th>기업명</th>
+              <th>계좌</th>
+              <th>보유수량</th>
+              <th>평균단가</th>
+              <th>보유원가</th>
+              <th>평가손익</th>
+              <th>실현손익 누적</th>
+              <th>총 손익</th>
+              <th>총 수익률</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="table-wrap data-entry">
+        <table id="dataTable">
+          <thead>
+            <tr>
+              <th>날짜</th>
+              <th>기업명</th>
+              <th>계좌</th>
+              <th>구분</th>
+              <th>단가</th>
+              <th>수량</th>
+              <th>거래금액</th>
+              <th>실현손익(이 거래)</th>
+              <th>누적 실현손익</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <h2>월별 수익률</h2>
+        <div class="grow"></div>
+        <div class="seg">
+          <button id="graphModeRealizedBtn" class="seg-btn active" type="button">실현손익 보기</button>
+          <button id="graphModeTotalBtn" class="seg-btn" type="button">총수익률 보기</button>
+        </div>
+        <div class="hint">월별 실현손익/평가손익 기반으로 추적</div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="monthlyTable">
+          <thead>
+            <tr>
+              <th>연-월</th>
+              <th>ISA 실현손익</th>
+              <th>일반 실현손익</th>
+              <th>전체 실현손익</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div id="monthlyModeNote" class="chart-note"></div>
+      <div class="charts">
+        <div class="chart">
+          <canvas id="barMonthly"></canvas>
+        </div>
+        <div class="chart">
+          <canvas id="lineCumulative"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card small">
+      <details>
+        <summary>CSV 형식</summary>
+        <p>헤더: <code>date,company,account,side,price,qty,close</code></p>
+        <p><code>side</code>는 <b>BUY</b> 또는 <b>SELL</b> (또는 매수/매도) 가능.</p>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <span>데이터는 브라우저(LocalStorage)에 저장돼요. 다른 기기로 옮기려면 CSV 내보내기/가져오기.</span>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
