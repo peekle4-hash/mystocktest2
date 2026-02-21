@@ -147,7 +147,3 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
-/* 매도 완료 종목 표와 매매기록 표 사이 간격 */
-.table-wrap.mini + .table-wrap.data-entry{
-  margin-top: 18px;   /* 14~24px 추천 */
-}

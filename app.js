@@ -22,10 +22,7 @@ function fmtChartPct(value) {
   if (!Number.isFinite(value)) return "-";
   if (Math.abs(value) < 0.005) return "0%";
   const sign = value > 0 ? "+" : "";
-  return sign + Number(value).toLocaleString(undefined, {
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2
-}) + "%";
+  return sign + value.toFixed(2) + "%";
 }
 function num(v) {
   if (v === "" || v === null || v === undefined) return NaN;
@@ -850,17 +847,7 @@ function renderCharts(monthArr) {
       plugins: {
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtChartPct(ctx.parsed.y)}` } }
       },
-      scales: {
-  y: {
-    ticks: {
-      callback: (v) =>
-        Number(v).toLocaleString(undefined, {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2
-        }) + "%"
-    }
-  }
-}
+      scales: { y: { ticks: { callback: (v) => Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}) + "%" } } }
     }
   });
 
@@ -880,17 +867,7 @@ function renderCharts(monthArr) {
       plugins: {
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmtChartPct(ctx.parsed.y)}` } }
       },
-      scales: {
-  y: {
-    ticks: {
-      callback: (v) =>
-        Number(v).toLocaleString(undefined, {
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 2
-        }) + "%"
-    }
-  }
-}
+      scales: { y: { ticks: { callback: (v) => Number(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:2}) + "%" } } }
     }
   });
 }
