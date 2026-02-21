@@ -154,7 +154,6 @@ function computeLedger(rows, asOfIso, cutoffIso = asOfIso) {
     p.account = account;
     if (company) p.trades = (p.trades || 0) + 1;
 
-
     let amount = NaN;
     let realized = 0;
     if (Number.isFinite(price) && Number.isFinite(qty)) {
@@ -201,9 +200,6 @@ function computeLedger(rows, asOfIso, cutoffIso = asOfIso) {
 
   return { perRow, positions: pos, monthReal };
 }
-
-
-
 
 function normalizeCompany(s){
   return (s||"")
@@ -931,7 +927,7 @@ function importCSV(file) {
         side: normalizeSide((side || "BUY").trim()),
         price: (price || "").trim(),
         qty: (qty || "").trim(),
-              });
+      });
     }
     rows = newRows;
     saveRows(rows);
@@ -991,10 +987,12 @@ function updateDerived(ledger) {
   setKpi("kpiCostISA", fmtMoney(isa.cost));
   setSignedKpi("kpiUnrealISA", isa.unreal, fmtMoney);
   setSignedKpi("kpiRealISA", isa.real, fmtMoney);
+  setSignedKpi("kpiRetISA", isa.ret, fmtPct);   // ✅ 추가
 
   setKpi("kpiCostGEN", fmtMoney(gen.cost));
   setSignedKpi("kpiUnrealGEN", gen.unreal, fmtMoney);
   setSignedKpi("kpiRealGEN", gen.real, fmtMoney);
+  setSignedKpi("kpiRetGEN", gen.ret, fmtPct);   // ✅ 추가
 
   buildHoldTables(ledger);
 
