@@ -149,7 +149,7 @@
   <!-- 3) 데이터 입력(매매기록) -->
   <section class="card tab-page" id="tab-trades">
     <div class="row summary-row">
-      <h3 class="h3">보유현황(기업별)</h3>
+      <h3 class="h3">보유현황(기업별) <span class="title-note">데이터 확인이 추가되기를 원하는 종목은 "정확한 종목명"을 캡쳐 또는 적어서 지연이에게 카톡주세요</span></h3>
       <div class="grow"></div>
       <div class="seg">
         <button class="seg-btn active" id="holdScopeAll" type="button">전체</button>
@@ -496,6 +496,11 @@
           <label id="planAmountWrap" style="display:none">
             <span>투자금액(원)</span>
             <input id="planAmount" type="text" inputmode="decimal" placeholder="예) 10,000" />
+            <div class="frac-row">
+              <label class="frac-check"><input id="planFractional" type="checkbox" /> 소수점 거래</label>
+              <input id="planUnitPrice" class="money" type="text" inputmode="decimal" placeholder="1주 가격(원)" style="display:none" />
+              <input id="planCalcQty" type="text" readonly placeholder="예상 수량(주)" style="display:none" />
+            </div>
           </label>
           <label>
             <span>상태</span>

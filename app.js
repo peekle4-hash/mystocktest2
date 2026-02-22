@@ -97,6 +97,13 @@ function bindMoneyCommaInput(inputEl) {
   if (inputEl.getAttribute('data-comma-bound') === '1') return;
   inputEl.setAttribute('data-comma-bound', '1');
 
+  // format existing value on bind (so commas persist after refresh)
+  try { inputEl.value = formatMoneyInputValue(inputEl.value); } catch (_) {}
+
+  inputEl.addEventListener('blur', () => {
+    try { inputEl.value = formatMoneyInputValue(inputEl.value); } catch (_) {}
+  });
+
   inputEl.addEventListener('input', () => {
     const start = inputEl.selectionStart ?? inputEl.value.length;
     const before = inputEl.value;
@@ -1334,6 +1341,13 @@ function openPlanModal(type, existing = null) {
   setPlanModeUI(mode);
   if (qty) qty.value = (existing?.qty ?? '');
   if (amount) amount.value = (existing?.amount ?? '') === '' ? '' : formatMoneyInputValue(String(existing?.amount ?? ''));
+  // 소수점 거래
+  const frac = document.getElementById('planFractional');
+  const unit = document.getElementById('planUnitPrice');
+  const calc = document.getElementById('planCalcQty');
+  if (frac) frac.checked = !!existing?.fractional;
+  if (unit) unit.value = (existing?.unitPrice ?? '') === '' ? '' : formatMoneyInputValue(String(existing?.unitPrice ?? ''));
+  if (calc) calc.value = '';
   if (note) note.value = existing?.note || '';
   if (status) status.value = (existing?.status === '완료') ? '완료' : '대기';
 
@@ -1358,7 +1372,36 @@ function updatePlanCurrentHint() {
 }
 
 function updatePlanCalcHint() {
-  // 현재가 자동 불러오기를 제거했으므로 계산 힌트는 사용하지 않음
+  const mode = getPlanMode();
+  const frac = document.getElementById('planFractional');
+  const unitEl = document.getElementById('planUnitPrice');
+  const calcEl = document.getElementById('planCalcQty');
+  const amtEl = document.getElementById('planAmount');
+  const qtyEl = document.getElementById('planQty');
+
+  const isFrac = !!frac?.checked;
+
+  // 소수점 거래는 금액(원) 입력일 때만 예상 수량을 계산
+  if (unitEl) unitEl.style.display = (isFrac && mode === 'AMOUNT') ? '' : 'none';
+  if (calcEl) calcEl.style.display = (isFrac && mode === 'AMOUNT') ? '' : 'none';
+
+  if (!isFrac || mode !== 'AMOUNT') {
+    if (calcEl) calcEl.value = '';
+    return;
+  }
+
+  const amount = num(amtEl?.value);
+  const unitPrice = num(unitEl?.value);
+
+  if (Number.isFinite(amount) && Number.isFinite(unitPrice) && unitPrice > 0) {
+    const q = amount / unitPrice;
+    const qStr = (Math.round(q * 1e8) / 1e8).toString();
+    if (calcEl) calcEl.value = qStr;
+    // 저장 시 참고할 수 있게 수량에도 자동 반영(숨김일 수 있음)
+    if (qtyEl) qtyEl.value = qStr;
+  } else {
+    if (calcEl) calcEl.value = '';
+  }
 }
 
 function planDiffBadge() { return { cls: 'neutral', text: '' }; }
@@ -1570,6 +1613,12 @@ function setupPlanUI() {
     bindMoneyCommaInput(planAmtEl);
     planAmtEl.addEventListener('input', updatePlanCalcHint);
   }
+  const unitEl = document.getElementById('planUnitPrice');
+  if (unitEl) {
+    bindMoneyCommaInput(unitEl);
+    unitEl.addEventListener('input', updatePlanCalcHint);
+  }
+  document.getElementById('planFractional')?.addEventListener('change', updatePlanCalcHint);
 
   // 저장
   document.getElementById('planSaveBtn')?.addEventListener('click', () => {
@@ -1581,6 +1630,8 @@ function setupPlanUI() {
     const mode = getPlanMode();
     const qty = num(document.getElementById('planQty')?.value);
     const amount = num(document.getElementById('planAmount')?.value);
+    const isFrac = !!document.getElementById('planFractional')?.checked;
+    const unitPrice = num(document.getElementById('planUnitPrice')?.value);
     const note = (document.getElementById('planNote')?.value || '').toString().trim();
     const status = (document.getElementById('planStatus')?.value || '대기').toString();
 
@@ -1603,6 +1654,14 @@ function setupPlanUI() {
         document.getElementById('planAmount')?.focus();
         return;
       }
+
+      if (isFrac) {
+        if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+          alert('소수점 거래를 쓰려면 1주 가격(원)을 숫자로 입력해줘');
+          document.getElementById('planUnitPrice')?.focus();
+          return;
+        }
+      }
     } else {
       if (!Number.isFinite(qty)) {
         alert('수량을 숫자로 입력해줘');
@@ -1617,11 +1676,11 @@ function setupPlanUI() {
     if (planEditing.id) {
       const idx = arr.findIndex(x => x.id === planEditing.id);
       const base = idx >= 0 ? arr[idx] : { id: planEditing.id };
-      const next = { ...base, company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, updatedAt: now };
+      const next = { ...base, company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, fractional: isFrac, unitPrice: Number.isFinite(unitPrice) ? unitPrice : null, note, status, updatedAt: now };
       if (idx >= 0) arr[idx] = next;
       else arr.push(next);
     } else {
-      arr.push({ id: makeId(), company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, createdAt: now, updatedAt: now });
+      arr.push({ id: makeId(), company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, fractional: isFrac, unitPrice: Number.isFinite(unitPrice) ? unitPrice : null, note, status, createdAt: now, updatedAt: now });
     }
 
     savePlans(type, arr);

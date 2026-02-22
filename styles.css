@@ -547,3 +547,18 @@ header {
 }
 
 .modal-close:hover{background:rgba(15,23,42,.14)}
+
+/* 보유현황(기업별) 제목 옆 안내 */
+.title-note{
+  font-size:12px;
+  font-weight:600;
+  color:#64748b;
+  margin-left:10px;
+  letter-spacing:-0.2px;
+}
+
+/* 소수점 거래 입력 UI */
+.frac-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.frac-check{display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;font-weight:700}
+#planUnitPrice,#planCalcQty{min-width:160px;flex:1}
+#planCalcQty{background:#f8fafc;color:#0f172a;font-variant-numeric:tabular-nums}
