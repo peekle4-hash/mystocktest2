@@ -148,21 +148,6 @@
 
   <!-- 3) 데이터 입력(매매기록) -->
   <section class="card tab-page" id="tab-trades">
-    <div class="row">
-      <h2>데이터 입력 (매매기록)</h2>
-      <div class="grow"></div>
-      <div class="btns">
-        <button id="addRowBtn">행 추가</button>
-        <button class="secondary" id="exportBtn">CSV 내보내기</button>
-        <label class="file secondary">
-          CSV 가져오기
-          <input accept=".csv" id="importFile" type="file"/>
-        </label>
-        <button class="danger" id="clearBtn">전체 삭제</button>
-      </div>
-      <div class="hint">입력: 날짜 / 기업명 / 계좌 / 매수·매도 / 단가 / 수량</div>
-    </div>
-
     <div class="row summary-row">
       <h3 class="h3">보유현황(기업별)</h3>
       <div class="grow"></div>
@@ -222,6 +207,22 @@
         </thead>
         <tbody></tbody>
       </table>
+    </div>
+
+    <!-- 데이터 입력(매매기록) 제목/버튼은 보유현황 아래로 이동 -->
+    <div class="row" style="margin-top:18px">
+      <h2 style="margin:0">데이터 입력 (매매기록)</h2>
+      <div class="grow"></div>
+      <div class="btns">
+        <button id="addRowBtn">행 추가</button>
+        <button class="secondary" id="exportBtn">CSV 내보내기</button>
+        <label class="file secondary">
+          CSV 가져오기
+          <input accept=".csv" id="importFile" type="file"/>
+        </label>
+        <!-- 전체삭제 버튼 제거(실수 방지) -->
+      </div>
+      <div class="hint">입력: 날짜 / 기업명 / 계좌 / 매수·매도 / 단가 / 수량</div>
     </div>
 
     <div class="table-wrap data-entry">

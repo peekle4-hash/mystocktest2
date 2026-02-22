@@ -1340,12 +1340,53 @@ function renderPlans() {
     // 최신 생성/수정이 위로
     const sorted = [...arr].sort((a,b)=> (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
 
+    const STATUS_ORDER = ['대기', '진행중', '완료', '보류'];
+    const statusClass = (s) => {
+      if (s === '대기') return 'wait';
+      if (s === '진행중') return 'doing';
+      if (s === '완료') return 'done';
+      if (s === '보류') return 'hold';
+      return 'wait';
+    };
+
+    const buckets = new Map(STATUS_ORDER.map(s => [s, []]));
+    for (const it of sorted) {
+      const s = (it.status || '대기').toString();
+      if (!buckets.has(s)) buckets.set(s, []);
+      buckets.get(s).push(it);
+    }
+
+    const makeSection = (label) => {
+      const sec = document.createElement('div');
+      sec.className = `plan-status-sec status-${statusClass(label)}`;
+      sec.innerHTML = `
+        <div class="plan-status-head">
+          <div class="plan-status-title">${label}</div>
+          <div class="plan-status-count"></div>
+        </div>
+        <div class="plan-status-list"></div>
+      `;
+      return sec;
+    };
+
+    // 섹션 생성(고정 순서) + 기타 상태도 맨 아래
+    const statusKeys = [...STATUS_ORDER, ...Array.from(buckets.keys()).filter(s => !STATUS_ORDER.includes(s))];
+    const sections = new Map();
+    for (const s of statusKeys) {
+      const list = buckets.get(s) || [];
+      if (!list.length) continue; // 비어있으면 숨김
+      const sec = makeSection(s);
+      sec.querySelector('.plan-status-count').textContent = `${list.length}건`;
+      wrap.appendChild(sec);
+      sections.set(s, sec.querySelector('.plan-status-list'));
+    }
+
     for (const it of sorted) {
       const company = it.company || '';
       const mode = (it.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
       const qty = Number(it.qty);
       const amount = Number(it.amount);
-      const status = it.status || '대기';
+      const status = (it.status || '대기').toString();
       const note = it.note || '';
       const account = (it.account || '').toString().trim() || '-';
 
@@ -1359,7 +1400,7 @@ function renderPlans() {
           <div style="flex:1">
             <div class="plan-card-title">
               <button class="plan-company-btn" type="button" data-plan-open-price="${company}">${company || '-'}</button>
-              <span class="badge neutral">${status}</span>
+              <span class="badge status-${statusClass(status)}">${status}</span>
             </div>
             <div class="plan-subline">계좌: ${escapeHtml(account)} · 입력 방식: ${mode === 'AMOUNT' ? '금액(원)' : '주수(수량)'}</div>
           </div>
@@ -1388,7 +1429,8 @@ function renderPlans() {
         </div>
       `;
 
-      wrap.appendChild(card);
+      const targetWrap = sections.get(status) || wrap;
+      targetWrap.appendChild(card);
 
       const openBtn = card.querySelector('button[data-plan-open-price]');
       if (openBtn) openBtn.addEventListener('click', () => openPriceModal(company));
@@ -1593,11 +1635,15 @@ function buildTable(rows, ledger) {
         <td><input type="date" value="${r.date || ""}" data-k="date" data-i="${idx}"></td>
         <td><input type="text" list="closeCompanyList" value="${r.company || ""}" placeholder="예: 삼성전자" data-k="company" data-i="${idx}"></td>
         <td>
-          <select data-k="account" data-i="${idx}">
-            <option value="">선택</option>
-            <option value="ISA">ISA</option>
-            <option value="일반">일반</option>
-          </select>
+          <div class="acct-cell">
+            <select data-k="account" data-i="${idx}">
+              <option value="">선택</option>
+              <option value="ISA">ISA</option>
+              <option value="일반">일반</option>
+              <option value="기타">기타</option>
+            </select>
+            <input type="text" class="acct-other" placeholder="기타 계좌명" value="" data-k="accountOther" data-i="${idx}" style="display:none;margin-top:6px" />
+          </div>
         </td>
         <td>
           <select data-k="side" data-i="${idx}">
@@ -1625,7 +1671,18 @@ function buildTable(rows, ledger) {
 
       tbody.appendChild(tr);
 
-      tr.querySelector('select[data-k="account"]').value = normalizeAccount(r.account);
+      // 계좌: ISA/일반/기타(직접입력)
+      const acctSel = tr.querySelector('select[data-k="account"]');
+      const acctOther = tr.querySelector('input[data-k="accountOther"]');
+      const acctRaw = (r.account ?? '').toString().trim();
+      if (acctRaw === 'ISA' || acctRaw === '일반' || acctRaw === '') {
+        acctSel.value = acctRaw;
+        if (acctOther) { acctOther.value = ''; acctOther.style.display = 'none'; }
+      } else {
+        acctSel.value = '기타';
+        if (acctOther) { acctOther.value = acctRaw; acctOther.style.display = ''; }
+      }
+
       tr.querySelector('select[data-k="side"]').value = side || "BUY";
     }
   }
@@ -1710,9 +1767,29 @@ function onCellEdit(e) {
   const k = el.getAttribute("data-k");
   if (!Number.isFinite(i) || !k) return;
 
-  if (k === "account") rows[i][k] = normalizeAccount(el.value);
-  else if (k === "side") rows[i][k] = normalizeSide(el.value);
-  else rows[i][k] = el.value;
+  if (k === "account") {
+    const v = (el.value || "").toString();
+    // 기타 선택 시: 아래 입력칸을 열고, 실제 값은 기타 입력칸에서 저장
+    const other = document.querySelector(`input[data-k="accountOther"][data-i="${i}"]`);
+    if (v === '기타') {
+      if (other) other.style.display = '';
+      const cur = (rows[i].account ?? '').toString().trim();
+      if (cur === 'ISA' || cur === '일반' || cur === '') rows[i].account = '기타';
+    } else {
+      if (other) { other.value = ''; other.style.display = 'none'; }
+      rows[i].account = normalizeAccount(v);
+    }
+  } else if (k === "accountOther") {
+    const v = (el.value || '').toString().trim();
+    rows[i].account = v || '기타';
+    // 입력칸을 쓰기 시작하면 select도 기타로 맞춤
+    const sel = document.querySelector(`select[data-k="account"][data-i="${i}"]`);
+    if (sel) sel.value = '기타';
+  } else if (k === "side") {
+    rows[i][k] = normalizeSide(el.value);
+  } else {
+    rows[i][k] = el.value;
+  }
 
   saveRows(rows);
 
@@ -2149,19 +2226,19 @@ document.addEventListener("DOMContentLoaded", () => {
   rows = loadRows();
     $("asOfDate").value = (localStorage.getItem(ASOF_KEY) || todayISO());
 
-  $("addRowBtn").addEventListener("click", addEmptyRow);
+  $("addRowBtn")?.addEventListener("click", addEmptyRow);
 
-  $("clearCloseBtn").addEventListener("click", clearCloseForDate);
-  $("exportBtn").addEventListener("click", exportCSV);
-  $("clearBtn").addEventListener("click", clearAll);
-  $("asOfDate").addEventListener("change", () => {
+  $("clearCloseBtn")?.addEventListener("click", clearCloseForDate);
+  $("exportBtn")?.addEventListener("click", exportCSV);
+  // 전체삭제 버튼은 제거했어요(실수 방지)
+  $("asOfDate")?.addEventListener("change", () => {
     const v = normDateIso($("asOfDate").value || "");
     if (v) localStorage.setItem(ASOF_KEY, v);
     renderFull();
     scheduleCloudUpload();
   });
 
-  $("importFile").addEventListener("change", (e) => {
+  $("importFile")?.addEventListener("change", (e) => {
     const f = e.target.files?.[0];
     if (f) importCSV(f);
     e.target.value = "";
