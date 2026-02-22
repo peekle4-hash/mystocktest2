@@ -1686,7 +1686,8 @@ function buildTable(rows, ledger) {
               <option value="일반">일반</option>
               <option value="기타">기타</option>
             </select>
-            <input type="text" class="acct-other" placeholder="기타 계좌명" value="" data-k="accountOther" data-i="${idx}" style="display:none;margin-top:6px" />
+            <input type="text" class="acct-other" placeholder="기타 계좌명" value="" data-k="accountOther" data-i="${idx}" style="display:none" />
+            <button type="button" class="acct-back" data-i="${idx}" title="ISA/일반 선택으로 돌아가기" style="display:none">▾</button>
           </div>
         </td>
         <td>
@@ -1718,13 +1719,33 @@ function buildTable(rows, ledger) {
       // 계좌: ISA/일반/기타(직접입력)
       const acctSel = tr.querySelector('select[data-k="account"]');
       const acctOther = tr.querySelector('input[data-k="accountOther"]');
+      const acctBack = tr.querySelector('button.acct-back');
       const acctRaw = (r.account ?? '').toString().trim();
       if (acctRaw === 'ISA' || acctRaw === '일반' || acctRaw === '') {
         acctSel.value = acctRaw;
         if (acctOther) { acctOther.value = ''; acctOther.style.display = 'none'; }
+        if (acctSel) acctSel.style.visibility = 'visible';
+        if (acctBack) acctBack.style.display = 'none';
       } else {
         acctSel.value = '기타';
         if (acctOther) { acctOther.value = acctRaw; acctOther.style.display = 'block'; }
+        if (acctSel) acctSel.style.visibility = 'hidden';
+        if (acctBack) acctBack.style.display = 'inline-flex';
+      }
+
+      // 기타 입력 상태에서 드롭다운으로 되돌리기
+      if (acctBack && acctSel && acctOther) {
+        acctBack.addEventListener('click', () => {
+          acctOther.style.display = 'none';
+          acctOther.value = '';
+          acctBack.style.display = 'none';
+          acctSel.style.visibility = 'visible';
+          acctSel.value = '';
+          // rows 업데이트
+          rows[idx].account = '';
+          computeAndRender();
+          acctSel.focus();
+        });
       }
 
       tr.querySelector('select[data-k="side"]').value = side || "BUY";
@@ -1818,12 +1839,21 @@ function onCellEdit(e) {
     const v = (el.value || "").toString();
     // 기타 선택 시: 아래 입력칸을 열고, 실제 값은 기타 입력칸에서 저장
     const other = document.querySelector(`input[data-k="accountOther"][data-i="${i}"]`);
+    const backBtn = document.querySelector(`button.acct-back[data-i="${i}"]`);
     if (v === '기타') {
-      if (other) other.style.display = 'block';
+      if (other) {
+        other.style.display = 'block';
+        other.focus();
+      }
+      // select는 자리만 유지하고 보이지 않게(테이블 밀림 방지)
+      el.style.visibility = 'hidden';
+      if (backBtn) backBtn.style.display = 'inline-flex';
       const cur = (rows[i].account ?? '').toString().trim();
       if (cur === 'ISA' || cur === '일반' || cur === '') rows[i].account = '기타';
     } else {
       if (other) { other.value = ''; other.style.display = 'none'; }
+      el.style.visibility = 'visible';
+      if (backBtn) backBtn.style.display = 'none';
       rows[i].account = normalizeAccount(v);
     }
   } else if (k === "accountOther") {
@@ -1831,7 +1861,12 @@ function onCellEdit(e) {
     rows[i].account = v || '기타';
     // 입력칸을 쓰기 시작하면 select도 기타로 맞춤
     const sel = document.querySelector(`select[data-k="account"][data-i="${i}"]`);
-    if (sel) sel.value = '기타';
+    const backBtn = document.querySelector(`button.acct-back[data-i="${i}"]`);
+    if (sel) {
+      sel.value = '기타';
+      sel.style.visibility = 'hidden';
+    }
+    if (backBtn) backBtn.style.display = 'inline-flex';
   } else if (k === "side") {
     rows[i][k] = normalizeSide(el.value);
   } else if (k === "price") {

@@ -45,6 +45,30 @@ th,td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:center;font-si
 th{background:#f1f5f9;color:#0f172a;position:sticky;top:0;z-index:1}
 tbody tr:hover{background:#fafafa}
 
+/* 매매기록: 계좌(ISA/일반/기타) 입력이 테이블을 밀지 않도록 동일 자리에서 전환 */
+.acct-cell{position:relative;display:block;min-width:120px}
+.acct-cell select,.acct-cell input{width:120px;max-width:120px}
+.acct-cell .acct-other{position:absolute;left:0;top:0}
+.acct-cell .acct-back{
+  position:absolute;
+  right:4px;
+  top:50%;
+  transform:translateY(-50%);
+  width:26px;
+  height:26px;
+  border-radius:999px;
+  border:1px solid #d1d5db;
+  background:rgba(15,23,42,0.06);
+  color:#111827;
+  font-weight:900;
+  padding:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.acct-cell .acct-back:hover{background:rgba(15,23,42,0.10)}
+
 .kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:12px}
 @media (max-width:1100px){.kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:900px){.kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -65,6 +89,9 @@ tbody tr:hover{background:#fafafa}
 
 .h3{margin:0;font-size:14px}
 .summary-row{margin-top:6px}
+
+/* 매매기록 탭 상단 제목(보유현황(기업별))을 더 크게/볼드하게 */
+#tab-trades .summary-row .h3{font-size:20px;font-weight:900}
 .seg{display:inline-flex;border:1px solid #d1d5db;border-radius:12px;overflow:hidden;margin-left:8px}
 .seg-btn{border:0;background:#fff;color:#111827;padding:8px 10px;font-weight:800;cursor:pointer}
 .seg-btn.active{background:#111827;color:#fff}
