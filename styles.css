@@ -364,21 +364,119 @@ header {
 
   footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 }
-/* 모달 닫기 버튼(×) 안 보이는 문제 해결 */
-.modal-close,
-#modalClose,
-.close-modal,
-.modal .close {
-  background: rgba(0, 0, 0, 0.08) !important; /* 옅은 회색 배경 */
-  border: 1px solid rgba(0, 0, 0, 0.18) !important;
-  color: #111 !important;                   /* X 색 */
-  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+
+/* ===== 매수/매도 계획 ===== */
+.plan-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.plan-tab-btn{
+  padding:10px 12px;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,0.5);
+  background: rgba(255,255,255,0.7);
+  font-weight:700;
+  color:#0f172a;
+}
+.plan-tab-btn.active{
+  border-color: rgba(59,130,246,0.55);
+  box-shadow: 0 6px 18px rgba(59,130,246,0.14);
+}
+.plan-page{ display:none; }
+.plan-page.active{ display:block; }
+
+.plan-list{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:12px;
 }
 
-/* hover 시 더 잘 보이게 */
-.modal-close:hover,
-#modalClose:hover,
-.close-modal:hover,
-.modal .close:hover {
-  background: rgba(0, 0, 0, 0.14) !important;
+.plan-card{
+  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(148,163,184,0.35);
+  border-radius: 18px;
+  padding: 12px;
+  box-shadow: 0 10px 24px rgba(2,6,23,0.06);
+}
+.plan-card-head{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+.plan-card-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.plan-company-btn{
+  border:none;
+  background:transparent;
+  padding:0;
+  cursor:pointer;
+  font-size:16px;
+  font-weight:800;
+  color:#0f172a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.plan-subline{ color:#64748b; font-size:12px; font-weight:600; margin-top:4px; }
+
+.plan-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+.plan-kv{
+  background: rgba(248,250,252,0.9);
+  border: 1px solid rgba(148,163,184,0.25);
+  border-radius: 14px;
+  padding: 10px;
+}
+.plan-kv .k{ font-size:11px; color:#64748b; font-weight:700; }
+.plan-kv .v{ margin-top:4px; font-weight:800; color:#0f172a; }
+
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(255,255,255,0.8);
+}
+.badge.good{ border-color: rgba(16,185,129,0.35); }
+.badge.bad{ border-color: rgba(244,63,94,0.35); }
+.badge.neutral{ border-color: rgba(100,116,139,0.35); }
+
+.plan-actions{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  margin-top:10px;
+}
+.plan-actions button{ padding:8px 10px; border-radius:12px; }
+
+.form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+.form-grid label span{
+  display:block;
+  font-size:12px;
+  color:#64748b;
+  font-weight:700;
+  margin-bottom:6px;
+}
+.form-grid input, .form-grid select, textarea{
+  width:100%;
+}
+
+@media (min-width: 860px){
+  .plan-list{ grid-template-columns: 1fr 1fr; }
 }

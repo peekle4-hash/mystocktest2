@@ -6,6 +6,10 @@ const CLOUD_CFG_KEY = "stockTradeCloudCfg.v1";
 const DIRTY_KEY = "stockTradeDirty.v1";
 const LAST_SYNC_KEY = "stockTradeLastSync.v1";
 
+// 매수/매도 계획
+const PLAN_BUY_KEY = "stockTradePlanBuy.v1";
+const PLAN_SELL_KEY = "stockTradePlanSell.v1";
+
 const REGISTRY_URL = ""; 
 // TODO: 레지스트리 Apps Script 웹앱(/exec) URL을 여기에 넣으면,
 // 사용자들은 "암호만"으로 자신의 Apps Script URL+토큰을 불러올 수 있어요.
@@ -985,6 +989,8 @@ function buildHoldTables(ledger) {
     .sort((a,b)=> (b.realizedCum - a.realizedCum) || a.company.localeCompare(b.company));
 
   renderHoldTableTo("holdTableCurrent", current, "거래를 입력하면 보유중인 종목이 여기에 표시돼요.");
+  // 매수·매도 계획 탭에도 동일한 보유현황 표 표시
+  renderHoldTableTo("holdTableCurrentPlan", current, "거래를 입력하면 보유중인 종목이 여기에 표시돼요.");
   renderHoldTableTo("holdTableClosed", closed, "전량 매도한 종목이 여기에 표시돼요.");
 }
 
@@ -999,6 +1005,10 @@ function renderHoldTableTo(tableId, items, emptyMsg) {
   if (isCurrent) {
     const label = document.getElementById("holdAsOfLabel");
     if (label) label.textContent = `기준일: ${asOfIso} 종가 기준`;
+  }
+  if (tableId === "holdTableCurrentPlan") {
+    const label2 = document.getElementById("holdAsOfLabelPlan");
+    if (label2) label2.textContent = `기준일: ${asOfIso} 종가 기준`;
   }
 
   if (!items.length) {
@@ -1078,6 +1088,257 @@ function renderHoldTableTo(tableId, items, emptyMsg) {
       });
     });
   }
+}
+
+// ===== 매수/매도 계획 저장/불러오기 =====
+function loadPlans(type) {
+  const key = type === 'BUY' ? PLAN_BUY_KEY : PLAN_SELL_KEY;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function savePlans(type, arr) {
+  const key = type === 'BUY' ? PLAN_BUY_KEY : PLAN_SELL_KEY;
+  localStorage.setItem(key, JSON.stringify(arr));
+  scheduleCloudUpload('plans');
+}
+
+function makeId() {
+  return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+let planEditing = { type: 'BUY', id: null };
+
+function openPlanModal(type, existing = null) {
+  const modal = document.getElementById('planModal');
+  if (!modal) return;
+  planEditing = { type, id: existing?.id || null };
+
+  const title = document.getElementById('planModalTitle');
+  const sub = document.getElementById('planModalSub');
+  if (title) title.textContent = existing ? '계획 수정' : '계획 추가';
+  if (sub) sub.textContent = (type === 'BUY') ? '매수계획' : '매도계획';
+
+  const company = document.getElementById('planCompany');
+  const target = document.getElementById('planTarget');
+  const qty = document.getElementById('planQty');
+  const note = document.getElementById('planNote');
+  const status = document.getElementById('planStatus');
+
+  if (company) company.value = existing?.company || '';
+  if (target) target.value = (existing?.targetPrice ?? '');
+  if (qty) qty.value = (existing?.qty ?? '');
+  if (note) note.value = existing?.note || '';
+  if (status) status.value = existing?.status || '대기';
+
+  updatePlanCurrentHint();
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  setTimeout(() => company?.focus(), 0);
+}
+
+function closePlanModal() {
+  const modal = document.getElementById('planModal');
+  if (!modal) return;
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+function updatePlanCurrentHint() {
+  const company = document.getElementById('planCompany')?.value || '';
+  const asOfIso = $("asOfDate").value || todayISO();
+  const cur = company ? getCloseFor(asOfIso, company) : NaN;
+  const el = document.getElementById('planCurrentHint');
+  if (!el) return;
+  el.textContent = `현재가(기준일 종가): ${Number.isFinite(cur) ? fmtMoney(cur) + '원' : '-'}`;
+}
+
+function planDiffBadge(type, target, current) {
+  if (!Number.isFinite(target) || !Number.isFinite(current)) {
+    return { cls: 'neutral', text: '비교 불가' };
+  }
+  const diff = current - target;
+  const sign = diff > 0 ? '+' : '';
+  const pct = target !== 0 ? (diff / target) : NaN;
+
+  // 매수: 현재가가 목표가 이하(또는 근처)면 good
+  if (type === 'BUY') {
+    if (diff <= 0) return { cls: 'good', text: `${fmtMoney(diff)}원 (${fmtPct(pct)})` };
+    return { cls: 'bad', text: `${sign}${fmtMoney(diff)}원 (${fmtPct(pct)})` };
+  }
+
+  // 매도: 현재가가 목표가 이상이면 good
+  if (diff >= 0) return { cls: 'good', text: `${sign}${fmtMoney(diff)}원 (${fmtPct(pct)})` };
+  return { cls: 'bad', text: `${fmtMoney(diff)}원 (${fmtPct(pct)})` };
+}
+
+function renderPlans() {
+  const asOfIso = $("asOfDate").value || todayISO();
+
+  const buy = loadPlans('BUY');
+  const sell = loadPlans('SELL');
+
+  const buyWrap = document.getElementById('buyPlanList');
+  const sellWrap = document.getElementById('sellPlanList');
+  const buyEmpty = document.getElementById('buyPlanEmpty');
+  const sellEmpty = document.getElementById('sellPlanEmpty');
+  if (!buyWrap || !sellWrap) return;
+
+  const renderOne = (type, arr, wrap, emptyEl) => {
+    wrap.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = arr.length ? 'none' : 'block';
+
+    // 최신 생성/수정이 위로
+    const sorted = [...arr].sort((a,b)=> (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+
+    for (const it of sorted) {
+      const company = it.company || '';
+      const target = Number(it.targetPrice);
+      const qty = Number(it.qty);
+      const status = it.status || '대기';
+      const note = it.note || '';
+      const cur = company ? getCloseFor(asOfIso, company) : NaN;
+      const badge = planDiffBadge(type, target, cur);
+
+      const card = document.createElement('div');
+      card.className = 'plan-card';
+      card.innerHTML = `
+        <div class="plan-card-head">
+          <div style="flex:1">
+            <div class="plan-card-title">
+              <button class="plan-company-btn" type="button" data-plan-open-price="${company}">${company || '-'}</button>
+              <span class="badge neutral">${status}</span>
+              <span class="badge ${badge.cls}">${badge.text}</span>
+            </div>
+            <div class="plan-subline">현재가(기준일 종가): ${Number.isFinite(cur) ? fmtMoney(cur) + '원' : '-'}</div>
+          </div>
+        </div>
+
+        <div class="plan-grid">
+          <div class="plan-kv">
+            <div class="k">${type === 'BUY' ? '목표 매수가' : '목표 매도가'}</div>
+            <div class="v">${Number.isFinite(target) ? fmtMoney(target) + '원' : '-'}</div>
+          </div>
+          <div class="plan-kv">
+            <div class="k">수량</div>
+            <div class="v">${Number.isFinite(qty) ? fmtQty(qty) : '-'}</div>
+          </div>
+        </div>
+
+        ${note ? `<div class="plan-subline" style="margin-top:10px">📝 ${escapeHtml(note)}</div>` : ''}
+
+        <div class="plan-actions">
+          <button class="secondary" type="button" data-plan-edit="${it.id}">수정</button>
+          <button class="danger" type="button" data-plan-del="${it.id}">삭제</button>
+        </div>
+      `;
+
+      wrap.appendChild(card);
+
+      const openBtn = card.querySelector('button[data-plan-open-price]');
+      if (openBtn) openBtn.addEventListener('click', () => openPriceModal(company));
+
+      const editBtn = card.querySelector('button[data-plan-edit]');
+      if (editBtn) editBtn.addEventListener('click', () => {
+        const found = arr.find(x => x.id === it.id);
+        openPlanModal(type, found || it);
+      });
+      const delBtn = card.querySelector('button[data-plan-del]');
+      if (delBtn) delBtn.addEventListener('click', () => {
+        const ok = confirm('삭제할까?');
+        if (!ok) return;
+        const next = arr.filter(x => x.id !== it.id);
+        savePlans(type, next);
+        renderPlans();
+      });
+    }
+  };
+
+  renderOne('BUY', buy, buyWrap, buyEmpty);
+  renderOne('SELL', sell, sellWrap, sellEmpty);
+}
+
+function escapeHtml(s) {
+  return (s ?? '').toString()
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function setupPlanUI() {
+  // 내부 탭
+  document.querySelectorAll('.plan-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-plan-tab');
+      document.querySelectorAll('.plan-tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      document.querySelectorAll('.plan-page').forEach(p => p.classList.toggle('active', p.id === id));
+    });
+  });
+
+  document.getElementById('buyPlanAddBtn')?.addEventListener('click', () => openPlanModal('BUY'));
+  document.getElementById('sellPlanAddBtn')?.addEventListener('click', () => openPlanModal('SELL'));
+
+  // 모달 닫기
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (t.matches('[data-plan-close]')) closePlanModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePlanModal();
+  });
+
+  // 입력 변경 시 현재가 힌트 업데이트
+  document.getElementById('planCompany')?.addEventListener('input', updatePlanCurrentHint);
+
+  // 저장
+  document.getElementById('planSaveBtn')?.addEventListener('click', () => {
+    const type = planEditing.type;
+    const company = normCompany(document.getElementById('planCompany')?.value || '');
+    const targetPrice = num(document.getElementById('planTarget')?.value);
+    const qty = num(document.getElementById('planQty')?.value);
+    const note = (document.getElementById('planNote')?.value || '').toString().trim();
+    const status = (document.getElementById('planStatus')?.value || '대기').toString();
+
+    if (!company) {
+      alert('종목을 입력해줘');
+      document.getElementById('planCompany')?.focus();
+      return;
+    }
+    if (!Number.isFinite(targetPrice)) {
+      alert('목표가를 숫자로 입력해줘');
+      document.getElementById('planTarget')?.focus();
+      return;
+    }
+    if (!Number.isFinite(qty)) {
+      alert('수량을 숫자로 입력해줘');
+      document.getElementById('planQty')?.focus();
+      return;
+    }
+
+    const arr = loadPlans(type);
+    const now = Date.now();
+
+    if (planEditing.id) {
+      const idx = arr.findIndex(x => x.id === planEditing.id);
+      const base = idx >= 0 ? arr[idx] : { id: planEditing.id };
+      const next = { ...base, company, targetPrice, qty, note, status, updatedAt: now };
+      if (idx >= 0) arr[idx] = next;
+      else arr.push(next);
+    } else {
+      arr.push({ id: makeId(), company, targetPrice, qty, note, status, createdAt: now, updatedAt: now });
+    }
+
+    savePlans(type, arr);
+    closePlanModal();
+    renderPlans();
+  });
 }
 
 function buildTable(rows, ledger) {
@@ -1668,6 +1929,7 @@ function renderFull() {
   buildTable(rows, ledger);
   updateDerived(ledger);
   refreshCompanyDatalist();
+  try { renderPlans(); } catch {}
 }
 
 function addEmptyRow() {
@@ -1688,6 +1950,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupCloudUI();
   setupEasyLoginUI();
     setupBackupUI();
+  setupPlanUI();
     // AUTO_CLOUD_BOOT: URL/토큰이 저장돼 있으면 자동 불러오기
     try {
       cloudCfg = loadCloudCfg();
