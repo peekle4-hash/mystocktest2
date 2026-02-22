@@ -440,8 +440,8 @@ header {
   color: #475569;
 }
 .plan-status-list{
-  display:flex;
-  flex-direction:column;
+  display:grid;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -544,6 +544,8 @@ header {
 @media (min-width: 860px){
   /* 완료는 아래로 내려가게(2열 분리 X) */
   .plan-list{ grid-template-columns: 1fr; }
+  /* 카드: 한 줄에 두 개씩 */
+  .plan-status-list{ grid-template-columns: 1fr 1fr; }
 }
 
 .modal-close:hover{background:rgba(15,23,42,.14)}
@@ -558,6 +560,41 @@ header {
 }
 
 /* 소수점 거래 입력 UI */
+.qty-cell{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.qty-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.frac-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:12px;
+  color:#475569;
+  font-weight:700;
+  user-select:none;
+  white-space:nowrap;
+}
+.frac-box{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:8px;
+}
+.frac-hint{
+  grid-column: 1 / -1;
+  font-size:12px;
+  color:#334155;
+  font-weight:700;
+  background: rgba(248,250,252,0.9);
+  border: 1px solid rgba(148,163,184,0.25);
+  border-radius: 12px;
+  padding: 8px 10px;
+}
 .frac-row{display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap}
 .frac-check{display:flex;align-items:center;gap:6px;font-size:12px;color:#334155;font-weight:700}
 #planUnitPrice,#planCalcQty{min-width:160px;flex:1}

@@ -1803,7 +1803,19 @@ function buildTable(rows, ledger) {
           </select>
         </td>
         <td><input type="text" inputmode="decimal" value="${r.price ?? ""}" data-k="price" data-i="${idx}" class="money-like" placeholder="단가"></td>
-        <td><input type="number" step="any" value="${r.qty ?? ""}" data-k="qty" data-i="${idx}"></td>
+        <td>
+          <div class="qty-cell">
+            <div class="qty-row">
+              <input type="number" step="any" value="${r.qty ?? ""}" data-k="qty" data-i="${idx}" class="qty-input">
+              <label class="frac-toggle"><input type="checkbox" data-k="frac" data-i="${idx}"> 소수점매수</label>
+            </div>
+            <div class="frac-box" data-role="fracBox" data-i="${idx}" style="display:none">
+              <input type="text" inputmode="decimal" value="${r.fracAmt ?? ""}" data-k="fracAmt" data-i="${idx}" class="money-like" placeholder="금액(원)">
+              <input type="text" inputmode="decimal" value="${r.fracUnitPrice ?? ""}" data-k="fracUnitPrice" data-i="${idx}" class="money-like" placeholder="1주 가격(원)">
+              <div class="frac-hint" data-role="fracHint" data-i="${idx}">예상 수량: -</div>
+            </div>
+          </div>
+        </td>
         <td><span data-role="amount" data-i="${idx}">${Number.isFinite(amount) ? fmtMoney(amount) : "-"}</span></td>
         <td><span data-role="realized" data-i="${idx}">${Number.isFinite(pr.realized) ? fmtMoney(pr.realized) : "-"}</span></td>
         <td><span data-role="cumReal" data-i="${idx}">${Number.isFinite(pr.cumReal) ? fmtMoney(pr.cumReal) : "-"}</span></td>
@@ -1855,6 +1867,9 @@ function buildTable(rows, ledger) {
       }
 
       tr.querySelector('select[data-k="side"]').value = side || "BUY";
+
+      // 소수점 매수 UI 초기화
+      try { updateFracUI(idx); } catch {}
     }
   }
 
@@ -1866,6 +1881,8 @@ function buildTable(rows, ledger) {
 
   // money inputs: show commas while typing (단가)
   tbody.querySelectorAll('input[data-k="price"]').forEach((inp) => bindMoneyCommaInput(inp));
+  tbody.querySelectorAll('input[data-k="fracAmt"]').forEach((inp) => bindMoneyCommaInput(inp));
+  tbody.querySelectorAll('input[data-k="fracUnitPrice"]').forEach((inp) => bindMoneyCommaInput(inp));
 
   // row action buttons
   tbody.querySelectorAll("button[data-del]").forEach((btn) => {
@@ -1935,6 +1952,61 @@ function updateRowView(i, ledger) {
   if (elC) elC.textContent = Number.isFinite(pr.cumReal) ? fmtMoney(pr.cumReal) : "-";
 }
 
+// --- 소수점 매수(매매기록) UI ---
+function isFracEnabled(r) {
+  return r && (r.frac === true || r.frac === '1' || r.frac === 1 || r.frac === 'true');
+}
+
+function updateFracUI(i) {
+  const r = rows[i] || {};
+  const cb = document.querySelector(`input[data-k="frac"][data-i="${i}"]`);
+  const box = document.querySelector(`[data-role="fracBox"][data-i="${i}"]`);
+  const hint = document.querySelector(`[data-role="fracHint"][data-i="${i}"]`);
+  const qtyInp = document.querySelector(`input[data-k="qty"][data-i="${i}"]`);
+  const amtInp = document.querySelector(`input[data-k="fracAmt"][data-i="${i}"]`);
+  const unitInp = document.querySelector(`input[data-k="fracUnitPrice"][data-i="${i}"]`);
+  const priceInp = document.querySelector(`input[data-k="price"][data-i="${i}"]`);
+
+  const enabled = isFracEnabled(r);
+  if (cb) cb.checked = enabled;
+
+  if (!enabled) {
+    if (box) box.style.display = 'none';
+    if (qtyInp) qtyInp.readOnly = false;
+    if (hint) hint.textContent = '예상 수량: -';
+    return;
+  }
+
+  if (box) box.style.display = 'grid';
+  if (qtyInp) qtyInp.readOnly = true;
+
+  // 1주 가격 기본값: 단가가 있으면 복사
+  const curPrice = stripCommas((priceInp?.value ?? r.price ?? '').toString());
+  if (unitInp && !stripCommas((unitInp.value || '').toString()) && curPrice) {
+    unitInp.value = curPrice;
+    r.fracUnitPrice = curPrice;
+  }
+
+  const amt = num(stripCommas((amtInp?.value ?? r.fracAmt ?? '').toString()));
+  const unit = num(stripCommas((unitInp?.value ?? r.fracUnitPrice ?? '').toString())) || num(curPrice);
+
+  if (Number.isFinite(amt) && Number.isFinite(unit) && unit > 0) {
+    const q = amt / unit;
+    const qStr = (Math.round(q * 1e6) / 1e6).toString();
+    // qty 입력칸/데이터 업데이트
+    if (qtyInp) qtyInp.value = qStr;
+    r.qty = qStr;
+    // 단가가 비어있으면 1주 가격을 단가로도 채움(실현손익 계산을 위해)
+    if (priceInp && !stripCommas((priceInp.value || '').toString())) {
+      priceInp.value = unit.toString();
+      r.price = unit.toString();
+    }
+    if (hint) hint.textContent = `예상 수량: ${fmtQty(q)}`;
+  } else {
+    if (hint) hint.textContent = '예상 수량: -';
+  }
+}
+
 function onCellEdit(e) {
   const el = e.target;
   const i = Number(el.getAttribute("data-i"));
@@ -1973,11 +2045,23 @@ function onCellEdit(e) {
       sel.style.visibility = 'hidden';
     }
     if (backBtn) backBtn.style.display = 'inline-flex';
+  } else if (k === "frac") {
+    rows[i].frac = el.checked ? true : false;
+    // 켜면 기본적으로 qty는 자동 계산 모드
+    updateFracUI(i);
+  } else if (k === "fracAmt") {
+    rows[i].fracAmt = stripCommas(el.value);
+    updateFracUI(i);
+  } else if (k === "fracUnitPrice") {
+    rows[i].fracUnitPrice = stripCommas(el.value);
+    updateFracUI(i);
   } else if (k === "side") {
     rows[i][k] = normalizeSide(el.value);
   } else if (k === "price") {
     // allow comma-formatted input but store raw number string
     rows[i][k] = stripCommas(el.value);
+    // 소수점매수 켜진 경우 1주 가격 기본값/계산 업데이트
+    if (isFracEnabled(rows[i])) updateFracUI(i);
   } else {
     rows[i][k] = el.value;
   }
