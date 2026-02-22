@@ -69,8 +69,44 @@ function fmtChartPct(value) {
 }
 function num(v) {
   if (v === "" || v === null || v === undefined) return NaN;
-  const x = Number(v);
+  // allow inputs like "18,000" or "31,055.5"
+  const s = String(v).replaceAll(",", "").trim();
+  const x = Number(s);
   return Number.isFinite(x) ? x : NaN;
+}
+
+function stripCommas(v) {
+  return String(v ?? "").replaceAll(",", "");
+}
+
+function formatMoneyInputValue(v) {
+  // keep digits and a single dot for decimals
+  const raw = String(v ?? "");
+  if (!raw) return "";
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  const parts = cleaned.split(".");
+  const intPart = (parts[0] || "").replace(/^0+(\d)/, "$1");
+  const decPart = parts.length > 1 ? parts.slice(1).join("").slice(0, 8) : "";
+  const withComma = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return decPart ? `${withComma}.${decPart}` : withComma;
+}
+
+function bindMoneyCommaInput(inputEl) {
+  if (!inputEl) return;
+  // Avoid double-binding
+  if (inputEl.getAttribute('data-comma-bound') === '1') return;
+  inputEl.setAttribute('data-comma-bound', '1');
+
+  inputEl.addEventListener('input', () => {
+    const start = inputEl.selectionStart ?? inputEl.value.length;
+    const before = inputEl.value;
+    const formatted = formatMoneyInputValue(before);
+    inputEl.value = formatted;
+    // Best-effort caret restore
+    const diff = formatted.length - before.length;
+    const nextPos = Math.max(0, Math.min(formatted.length, start + diff));
+    try { inputEl.setSelectionRange(nextPos, nextPos); } catch (_) {}
+  });
 }
 function normalizeAccount(v) {
   const s = (v ?? "").toString().trim();
@@ -746,7 +782,7 @@ function addCloseRow(tbody, asOfIso, companyVal, priceVal, focusCompany) {
         value="${companyVal}" style="width:100%">
     </td>
     <td>
-      <input type="number" step="any" placeholder="종가"
+      <input type="text" inputmode="decimal" placeholder="종가"
         data-close-company-name="${companyVal}"
         data-close-field="price"
         value="${priceVal !== "" ? priceVal : ""}" style="width:100%">
@@ -758,6 +794,7 @@ function addCloseRow(tbody, asOfIso, companyVal, priceVal, focusCompany) {
 
   const companyInp = tr.querySelector('[data-close-field="company"]');
   const priceInp = tr.querySelector('[data-close-field="price"]');
+  bindMoneyCommaInput(priceInp);
 
   // datalist 자동완성 (매매기록 기업명 목록)
   let dl = document.getElementById("closeCompanyList");
@@ -770,7 +807,7 @@ function addCloseRow(tbody, asOfIso, companyVal, priceVal, focusCompany) {
 
   function save() {
     const company = companyInp.value.trim();
-    const price = Number(priceInp.value);
+    const price = Number(stripCommas(priceInp.value));
     // 이전 기업명 key 정리
     const oldName = companyInp.getAttribute("data-close-company-name");
     if (oldName && oldName !== company) {
@@ -1173,7 +1210,7 @@ function renderHoldTableTo(tableId, items, emptyMsg) {
     tr.setAttribute("data-hold-company", p.company);
 
     const closeTd = isCurrent
-      ? `<td><input type="number" step="any"
+      ? `<td><input type="text" inputmode="decimal"
             data-hold-close="${p.company}"
             value="${Number.isFinite(p.close) ? p.close : ""}"
             placeholder="-"
@@ -1204,9 +1241,11 @@ function renderHoldTableTo(tableId, items, emptyMsg) {
   if (isCurrent) {
     tbody.querySelectorAll("input[data-hold-close]").forEach(inp => {
       const company = inp.getAttribute("data-hold-close");
+      bindMoneyCommaInput(inp);
       inp.addEventListener("input", () => {
-        const v = Number(inp.value);
-        if (inp.value === "") setCloseFor(asOfIso, company, NaN);
+        const raw = inp.value;
+        const v = Number(stripCommas(raw));
+        if (raw === "") setCloseFor(asOfIso, company, NaN);
         else if (Number.isFinite(v)) setCloseFor(asOfIso, company, v);
         const ledger2 = computeLedger(rows, asOfIso);
         updateDerived(ledger2);
@@ -1293,7 +1332,7 @@ function openPlanModal(type, existing = null) {
   if (modeEl) modeEl.value = mode;
   setPlanModeUI(mode);
   if (qty) qty.value = (existing?.qty ?? '');
-  if (amount) amount.value = (existing?.amount ?? '');
+  if (amount) amount.value = (existing?.amount ?? '') === '' ? '' : formatMoneyInputValue(String(existing?.amount ?? ''));
   if (note) note.value = existing?.note || '';
   if (status) status.value = existing?.status || '대기';
 
@@ -1503,7 +1542,11 @@ function setupPlanUI() {
     updatePlanCalcHint();
   });
   document.getElementById('planQty')?.addEventListener('input', updatePlanCalcHint);
-  document.getElementById('planAmount')?.addEventListener('input', updatePlanCalcHint);
+  const planAmtEl = document.getElementById('planAmount');
+  if (planAmtEl) {
+    bindMoneyCommaInput(planAmtEl);
+    planAmtEl.addEventListener('input', updatePlanCalcHint);
+  }
 
   // 저장
   document.getElementById('planSaveBtn')?.addEventListener('click', () => {
@@ -1633,7 +1676,8 @@ function buildTable(rows, ledger) {
 
       tr.innerHTML = `
         <td><input type="date" value="${r.date || ""}" data-k="date" data-i="${idx}"></td>
-        <td><input type="text" list="closeCompanyList" value="${r.company || ""}" placeholder="예: 삼성전자" data-k="company" data-i="${idx}"></td>
+        <td><input type="text" list="closeCompanyList" value="${r.company || ""}" placeholder="예: 삼성전자" data-k="company" data-i="${idx}"
+          title="※ 기업명은 보유현황과 동일하게 정확히 입력해야 실시간 주가 팝업이 연동됩니다."></td>
         <td>
           <div class="acct-cell">
             <select data-k="account" data-i="${idx}">
@@ -1651,7 +1695,7 @@ function buildTable(rows, ledger) {
             <option value="SELL">매도</option>
           </select>
         </td>
-        <td><input type="number" step="any" value="${r.price ?? ""}" data-k="price" data-i="${idx}"></td>
+        <td><input type="text" inputmode="decimal" value="${r.price ?? ""}" data-k="price" data-i="${idx}" class="money-like" placeholder="단가"></td>
         <td><input type="number" step="any" value="${r.qty ?? ""}" data-k="qty" data-i="${idx}"></td>
         <td><span data-role="amount" data-i="${idx}">${Number.isFinite(amount) ? fmtMoney(amount) : "-"}</span></td>
         <td><span data-role="realized" data-i="${idx}">${Number.isFinite(pr.realized) ? fmtMoney(pr.realized) : "-"}</span></td>
@@ -1680,7 +1724,7 @@ function buildTable(rows, ledger) {
         if (acctOther) { acctOther.value = ''; acctOther.style.display = 'none'; }
       } else {
         acctSel.value = '기타';
-        if (acctOther) { acctOther.value = acctRaw; acctOther.style.display = ''; }
+        if (acctOther) { acctOther.value = acctRaw; acctOther.style.display = 'block'; }
       }
 
       tr.querySelector('select[data-k="side"]').value = side || "BUY";
@@ -1692,6 +1736,9 @@ function buildTable(rows, ledger) {
     el.addEventListener("input", onCellEdit);
     el.addEventListener("change", onCellEdit);
   });
+
+  // money inputs: show commas while typing (단가)
+  tbody.querySelectorAll('input[data-k="price"]').forEach((inp) => bindMoneyCommaInput(inp));
 
   // row action buttons
   tbody.querySelectorAll("button[data-del]").forEach((btn) => {
@@ -1772,7 +1819,7 @@ function onCellEdit(e) {
     // 기타 선택 시: 아래 입력칸을 열고, 실제 값은 기타 입력칸에서 저장
     const other = document.querySelector(`input[data-k="accountOther"][data-i="${i}"]`);
     if (v === '기타') {
-      if (other) other.style.display = '';
+      if (other) other.style.display = 'block';
       const cur = (rows[i].account ?? '').toString().trim();
       if (cur === 'ISA' || cur === '일반' || cur === '') rows[i].account = '기타';
     } else {
@@ -1787,6 +1834,9 @@ function onCellEdit(e) {
     if (sel) sel.value = '기타';
   } else if (k === "side") {
     rows[i][k] = normalizeSide(el.value);
+  } else if (k === "price") {
+    // allow comma-formatted input but store raw number string
+    rows[i][k] = stripCommas(el.value);
   } else {
     rows[i][k] = el.value;
   }
