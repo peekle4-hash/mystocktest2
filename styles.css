@@ -249,7 +249,7 @@ textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;fon
 .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(148,163,184,.35)}
 .modal-title{font-weight:900;font-size:16px}
 .modal-sub{margin-top:4px;font-size:12px;color:#64748b}
-.modal-close{width:36px;height:36px;border-radius:12px;border:1px solid rgba(148,163,184,.45);background:rgba(241,245,249,.7);cursor:pointer}
+.modal-close{width:36px;height:36px;border-radius:12px;border:1px solid rgba(15,23,42,.25);background:rgba(15,23,42,.08);color:#0f172a;font-weight:900;display:grid;place-items:center;cursor:pointer}
 .modal-body{padding:14px 16px 18px}
 .modal-note{margin-top:10px;font-size:12px;color:#64748b}
 
@@ -480,3 +480,5 @@ header {
 @media (min-width: 860px){
   .plan-list{ grid-template-columns: 1fr 1fr; }
 }
+
+.modal-close:hover{background:rgba(15,23,42,.14)}

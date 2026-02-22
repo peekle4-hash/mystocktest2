@@ -1264,8 +1264,6 @@ function openPlanModal(type, existing = null) {
   if (sub) sub.textContent = (type === 'BUY') ? '매수계획' : '매도계획';
 
   const company = document.getElementById('planCompany');
-  const target = document.getElementById('planTarget');
-  const targetLabel = document.getElementById('planTargetLabel');
   const acctType = document.getElementById('planAccountType');
   const acctOther = document.getElementById('planAccountOther');
   const modeEl = document.getElementById('planMode');
@@ -1277,8 +1275,6 @@ function openPlanModal(type, existing = null) {
   const mode = (existing?.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
 
   if (company) company.value = existing?.company || '';
-  if (target) target.value = (existing?.targetPrice ?? '');
-  if (targetLabel) targetLabel.textContent = (type === 'BUY') ? '목표 매수가' : '목표 매도가';
 
   // 계좌 선택
   const acctRaw = (existing?.account || 'ISA').toString();
@@ -1317,111 +1313,19 @@ function closePlanModal() {
 }
 
 function updatePlanCurrentHint() {
-  const company = document.getElementById('planCompany')?.value || '';
-  const asOfIso = $("asOfDate").value || todayISO();
-  const cur = company ? getCloseFor(asOfIso, company) : NaN;
   const el = document.getElementById('planCurrentHint');
-  if (!el) return;
-
-  if (Number.isFinite(cur)) {
-    el.textContent = `현재가(자동 최신 종가): ${fmtMoney(cur)}원`;
-    return;
-  }
-
-  // 자동으로 최신 종가 시도
-  if (!company) {
-    el.textContent = '현재가(자동 최신 종가): -';
-    return;
-  }
-  el.textContent = '현재가(자동 최신 종가): 불러오는 중…';
-  ensureAutoCloseFor(asOfIso, company)
-    .then((v) => {
-      if (Number.isFinite(v)) {
-        el.textContent = `현재가(자동 최신 종가): ${fmtMoney(v)}원`;
-      } else {
-        el.textContent = '현재가(자동 최신 종가): 지원 안 됨/실패 (필요하면 보유현황에서 종가 입력)';
-      }
-      updatePlanCalcHint();
-    })
-    .catch(() => {
-      el.textContent = '현재가(자동 최신 종가): 지원 안 됨/실패 (필요하면 보유현황에서 종가 입력)';
-      updatePlanCalcHint();
-    });
+  if (el) el.textContent = '현재가는 종목명을 눌러 팝업에서 확인해줘.';
 }
 
 function updatePlanCalcHint() {
-  const mode = getPlanMode();
-  const company = document.getElementById('planCompany')?.value || '';
-  const asOfIso = $("asOfDate").value || todayISO();
-  const cur = company ? getCloseFor(asOfIso, company) : NaN;
-  const qty = num(document.getElementById('planQty')?.value);
-  const amount = num(document.getElementById('planAmount')?.value);
-  const el = document.getElementById('planCalcHint');
-  if (!el) return;
-
-  if (!Number.isFinite(cur)) {
-    el.textContent = '현재가를 못 가져왔어요. (지원 안 되는 종목이면 보유현황에서 종가를 직접 입력해줘)';
-    return;
-  }
-
-  if (mode === 'AMOUNT') {
-    if (!Number.isFinite(amount)) { el.textContent = `예상 수량: -`; return; }
-    const estQty = amount / cur;
-    el.textContent = `예상 수량(현재가 기준): ${fmtQty(estQty)}주`;
-    return;
-  }
-
-  // QTY
-  if (!Number.isFinite(qty)) { el.textContent = `예상 금액(현재가 기준): -`; return; }
-  const estAmt = qty * cur;
-  el.textContent = `예상 금액(현재가 기준): ${fmtMoney(estAmt)}원`;
+  // 현재가 자동 불러오기를 제거했으므로 계산 힌트는 사용하지 않음
 }
 
-function planDiffBadge(type, target, current) {
-  if (!Number.isFinite(target) || !Number.isFinite(current)) {
-    return { cls: 'neutral', text: '비교 불가' };
-  }
-  const diff = current - target;
-  const sign = diff > 0 ? '+' : '';
-  const pct = target !== 0 ? (diff / target) : NaN;
-
-  // 매수: 현재가가 목표가 이하(또는 근처)면 good
-  if (type === 'BUY') {
-    if (diff <= 0) return { cls: 'good', text: `${fmtMoney(diff)}원 (${fmtPct(pct)})` };
-    return { cls: 'bad', text: `${sign}${fmtMoney(diff)}원 (${fmtPct(pct)})` };
-  }
-
-  // 매도: 현재가가 목표가 이상이면 good
-  if (diff >= 0) return { cls: 'good', text: `${sign}${fmtMoney(diff)}원 (${fmtPct(pct)})` };
-  return { cls: 'bad', text: `${fmtMoney(diff)}원 (${fmtPct(pct)})` };
-}
+function planDiffBadge() { return { cls: 'neutral', text: '' }; }
 
 function renderPlans() {
-  const asOfIso = $("asOfDate").value || todayISO();
-
   const buy = loadPlans('BUY');
   const sell = loadPlans('SELL');
-
-  // 자동 현재가 채우기(가능한 종목만) — 비동기
-  const need = new Set();
-  for (const it of [...buy, ...sell]) {
-    const c = normCompany(it.company || '');
-    if (!c) continue;
-    const v = getCloseFor(asOfIso, c);
-    if (!Number.isFinite(v)) need.add(c);
-  }
-  if (need.size) {
-    Promise.allSettled([...need].map(c => ensureAutoCloseFor(asOfIso, c)))
-      .then((results) => {
-        const any = results.some(r => r.status === 'fulfilled' && Number.isFinite(r.value));
-        if (any) {
-          // 한번만 가볍게 리렌더
-          clearTimeout(renderPlans._t);
-          renderPlans._t = setTimeout(() => { try { renderPlans(); } catch {} }, 150);
-        }
-      })
-      .catch(() => {});
-  }
 
   const buyWrap = document.getElementById('buyPlanList');
   const sellWrap = document.getElementById('sellPlanList');
@@ -1438,20 +1342,15 @@ function renderPlans() {
 
     for (const it of sorted) {
       const company = it.company || '';
-      const target = Number(it.targetPrice);
       const mode = (it.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
       const qty = Number(it.qty);
       const amount = Number(it.amount);
       const status = it.status || '대기';
       const note = it.note || '';
       const account = (it.account || '').toString().trim() || '-';
-      const cur = company ? getCloseFor(asOfIso, company) : NaN;
-      const badge = planDiffBadge(type, target, cur);
 
-      const showQty = (mode === 'QTY') ? (Number.isFinite(qty) ? fmtQty(qty) + '주' : '-') : (Number.isFinite(amount) && Number.isFinite(cur) ? fmtQty(amount / cur) + '주' : '-');
-      const showAmt = (mode === 'AMOUNT') ? (Number.isFinite(amount) ? fmtMoney(amount) + '원' : '-') : (Number.isFinite(qty) && Number.isFinite(cur) ? fmtMoney(qty * cur) + '원' : '-');
-      const qtyLabel = (mode === 'AMOUNT') ? '예상 수량' : '수량';
-      const amtLabel = (mode === 'QTY') ? '예상 금액' : '투자금액';
+      const showQty = Number.isFinite(qty) ? (fmtQty(qty) + '주') : '-';
+      const showAmt = Number.isFinite(amount) ? (fmtMoney(amount) + '원') : '-';
 
       const card = document.createElement('div');
       card.className = 'plan-card';
@@ -1461,24 +1360,23 @@ function renderPlans() {
             <div class="plan-card-title">
               <button class="plan-company-btn" type="button" data-plan-open-price="${company}">${company || '-'}</button>
               <span class="badge neutral">${status}</span>
-              <span class="badge ${badge.cls}">${badge.text}</span>
             </div>
-            <div class="plan-subline">계좌: ${escapeHtml(account)} · 현재가(자동 최신 종가): ${Number.isFinite(cur) ? fmtMoney(cur) + '원' : '-'}</div>
+            <div class="plan-subline">계좌: ${escapeHtml(account)} · 입력 방식: ${mode === 'AMOUNT' ? '금액(원)' : '주수(수량)'}</div>
           </div>
         </div>
 
         <div class="plan-grid">
           <div class="plan-kv">
-            <div class="k">${type === 'BUY' ? '목표 매수가' : '목표 매도가'}</div>
-            <div class="v">${Number.isFinite(target) ? fmtMoney(target) + '원' : '-'}</div>
-          </div>
-          <div class="plan-kv">
-            <div class="k">${qtyLabel}</div>
+            <div class="k">수량(주)</div>
             <div class="v">${showQty}</div>
           </div>
           <div class="plan-kv">
-            <div class="k">${amtLabel}</div>
+            <div class="k">금액(원)</div>
             <div class="v">${showAmt}</div>
+          </div>
+          <div class="plan-kv">
+            <div class="k">구분</div>
+            <div class="v">${type === 'BUY' ? '매수' : '매도'}</div>
           </div>
         </div>
 
@@ -1514,6 +1412,7 @@ function renderPlans() {
   renderOne('BUY', buy, buyWrap, buyEmpty);
   renderOne('SELL', sell, sellWrap, sellEmpty);
 }
+
 
 function escapeHtml(s) {
   return (s ?? '').toString()
@@ -1568,7 +1467,6 @@ function setupPlanUI() {
   document.getElementById('planSaveBtn')?.addEventListener('click', () => {
     const type = planEditing.type;
     const company = normCompany(document.getElementById('planCompany')?.value || '');
-    const targetPrice = num(document.getElementById('planTarget')?.value);
     const acctType = (document.getElementById('planAccountType')?.value || 'ISA').toString();
     const acctOther = (document.getElementById('planAccountOther')?.value || '').toString().trim();
     const account = (acctType === '기타') ? (acctOther || '기타') : acctType;
@@ -1581,11 +1479,6 @@ function setupPlanUI() {
     if (!company) {
       alert('종목을 입력해줘');
       document.getElementById('planCompany')?.focus();
-      return;
-    }
-    if (!Number.isFinite(targetPrice)) {
-      alert((type === 'BUY' ? '목표 매수가' : '목표 매도가') + '를 숫자로 입력해줘');
-      document.getElementById('planTarget')?.focus();
       return;
     }
 
@@ -1616,11 +1509,11 @@ function setupPlanUI() {
     if (planEditing.id) {
       const idx = arr.findIndex(x => x.id === planEditing.id);
       const base = idx >= 0 ? arr[idx] : { id: planEditing.id };
-      const next = { ...base, company, targetPrice, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, updatedAt: now };
+      const next = { ...base, company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, updatedAt: now };
       if (idx >= 0) arr[idx] = next;
       else arr.push(next);
     } else {
-      arr.push({ id: makeId(), company, targetPrice, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, createdAt: now, updatedAt: now });
+      arr.push({ id: makeId(), company, account, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, createdAt: now, updatedAt: now });
     }
 
     savePlans(type, arr);
