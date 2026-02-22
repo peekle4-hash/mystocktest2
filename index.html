@@ -470,8 +470,20 @@
             <input id="planCompany" type="text" list="closeCompanyList" placeholder="예) 삼성전자" />
           </label>
           <label>
-            <span>목표가</span>
+            <span id="planTargetLabel">목표 매수가</span>
             <input id="planTarget" type="number" step="any" placeholder="예) 70000" />
+          </label>
+          <label>
+            <span>계좌</span>
+            <select id="planAccountType">
+              <option value="ISA">ISA</option>
+              <option value="일반">일반</option>
+              <option value="기타">기타</option>
+            </select>
+          </label>
+          <label id="planAccountOtherWrap" style="display:none">
+            <span>기타 계좌명</span>
+            <input id="planAccountOther" type="text" placeholder="예) 연금저축, 미니스탁" />
           </label>
           <label>
             <span>입력 방식</span>
@@ -506,7 +518,7 @@
         </label>
 
         <div class="row" style="margin-top:12px;align-items:center">
-          <div class="hint" id="planCurrentHint">현재가(기준일 종가): -</div>
+          <div class="hint" id="planCurrentHint">현재가(자동 최신 종가): -</div>
           <div class="grow"></div>
           <button class="secondary" type="button" data-plan-close>취소</button>
           <button id="planSaveBtn" type="button">저장</button>
