@@ -903,7 +903,7 @@ function setKpi(id, value) {
 }
 
 // --- Rendering: grouped by date (desc) ---
-let holdScope = "ALL"; // ALL | ISA | GEN
+let holdScope = "ALL"; // ALL | ISA | GEN | ETC
 
 // ===== 실시간 시세(TradingView 위젯) =====
 // 회사명은 입력 방식이 제각각이라, 공백/대소문자/기호를 제거한 '정규화 키'로 매칭
@@ -1130,6 +1130,7 @@ function buildHoldTables(ledger) {
     .filter(p => {
       if (holdScope === "ISA") return p.account === "ISA";
       if (holdScope === "GEN") return p.account === "일반";
+      if (holdScope === "ETC") return p.account !== "ISA" && p.account !== "일반";
       return true;
     })
     .map(p => {
@@ -1334,7 +1335,7 @@ function openPlanModal(type, existing = null) {
   if (qty) qty.value = (existing?.qty ?? '');
   if (amount) amount.value = (existing?.amount ?? '') === '' ? '' : formatMoneyInputValue(String(existing?.amount ?? ''));
   if (note) note.value = existing?.note || '';
-  if (status) status.value = existing?.status || '대기';
+  if (status) status.value = (existing?.status === '완료') ? '완료' : '대기';
 
   updatePlanCurrentHint();
   updatePlanCalcHint();
@@ -1379,18 +1380,17 @@ function renderPlans() {
     // 최신 생성/수정이 위로
     const sorted = [...arr].sort((a,b)=> (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
 
-    const STATUS_ORDER = ['대기', '진행중', '완료', '보류'];
+    const STATUS_ORDER = ['대기', '완료'];
     const statusClass = (s) => {
       if (s === '대기') return 'wait';
-      if (s === '진행중') return 'doing';
       if (s === '완료') return 'done';
-      if (s === '보류') return 'hold';
       return 'wait';
     };
 
     const buckets = new Map(STATUS_ORDER.map(s => [s, []]));
     for (const it of sorted) {
-      const s = (it.status || '대기').toString();
+      const s0 = (it.status || '대기').toString();
+      const s = (s0 === '완료') ? '완료' : '대기';
       if (!buckets.has(s)) buckets.set(s, []);
       buckets.get(s).push(it);
     }
@@ -1425,7 +1425,7 @@ function renderPlans() {
       const mode = (it.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
       const qty = Number(it.qty);
       const amount = Number(it.amount);
-      const status = (it.status || '대기').toString();
+      const status = ((it.status || '대기').toString() === '완료') ? '완료' : '대기';
       const note = it.note || '';
       const account = (it.account || '').toString().trim() || '-';
 
@@ -1463,6 +1463,13 @@ function renderPlans() {
         ${note ? `<div class="plan-subline" style="margin-top:10px">📝 ${escapeHtml(note)}</div>` : ''}
 
         <div class="plan-actions">
+          <label class="plan-inline" style="margin-right:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:#475569;font-weight:700">
+            상태
+            <select class="plan-status-select" data-plan-status="${it.id}">
+              <option value="대기">대기</option>
+              <option value="완료">완료</option>
+            </select>
+          </label>
           <button class="secondary" type="button" data-plan-edit="${it.id}">수정</button>
           <button class="danger" type="button" data-plan-del="${it.id}">삭제</button>
         </div>
@@ -1479,6 +1486,22 @@ function renderPlans() {
         const found = arr.find(x => x.id === it.id);
         openPlanModal(type, found || it);
       });
+
+      // 상태는 수정 버튼 없이 바로 변경
+      const statusSel = card.querySelector('select[data-plan-status]');
+      if (statusSel) {
+        statusSel.value = status;
+        statusSel.addEventListener('change', () => {
+          const v = (statusSel.value || '대기').toString();
+          const nextStatus = (v === '완료') ? '완료' : '대기';
+          const i2 = arr.findIndex(x => x.id === it.id);
+          if (i2 >= 0) {
+            arr[i2] = { ...arr[i2], status: nextStatus, updatedAt: Date.now() };
+            savePlans(type, arr);
+            renderPlans();
+          }
+        });
+      }
       const delBtn = card.querySelector('button[data-plan-del]');
       if (delBtn) delBtn.addEventListener('click', () => {
         const ok = confirm('삭제할까?');
@@ -1677,7 +1700,7 @@ function buildTable(rows, ledger) {
       tr.innerHTML = `
         <td><input type="date" value="${r.date || ""}" data-k="date" data-i="${idx}"></td>
         <td><input type="text" list="closeCompanyList" value="${r.company || ""}" placeholder="예: 삼성전자" data-k="company" data-i="${idx}"
-          title="※ 기업명은 보유현황과 동일하게 정확히 입력해야 실시간 주가 팝업이 연동됩니다."></td>
+          title="※ 기업명은 정확한 기업명을 입력해야 실시간 주가 팝업이 연동됩니다."></td>
         <td>
           <div class="acct-cell">
             <select data-k="account" data-i="${idx}">
@@ -2335,11 +2358,13 @@ document.addEventListener("DOMContentLoaded", () => {
     $("holdScopeAll").classList.toggle("active", s === "ALL");
     $("holdScopeISA").classList.toggle("active", s === "ISA");
     $("holdScopeGEN").classList.toggle("active", s === "GEN");
+    $("holdScopeETC").classList.toggle("active", s === "ETC");
     renderFull();
   };
   $("holdScopeAll").addEventListener("click", () => setScope("ALL"));
   $("holdScopeISA").addEventListener("click", () => setScope("ISA"));
   $("holdScopeGEN").addEventListener("click", () => setScope("GEN"));
+  $("holdScopeETC").addEventListener("click", () => setScope("ETC"));
 
   if (!rows.length) {
     // 첫 실행(로컬 데이터 없음)에는 "화면용 빈 행"만 보여주고,

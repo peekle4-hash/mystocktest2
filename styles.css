@@ -542,7 +542,8 @@ header {
 }
 
 @media (min-width: 860px){
-  .plan-list{ grid-template-columns: 1fr 1fr; }
+  /* 완료는 아래로 내려가게(2열 분리 X) */
+  .plan-list{ grid-template-columns: 1fr; }
 }
 
 .modal-close:hover{background:rgba(15,23,42,.14)}
