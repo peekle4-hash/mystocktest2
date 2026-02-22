@@ -3,19 +3,44 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"/>
-  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/>
   <title>주식 매매기록 · 수익률 대시보드</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json"/>
+  <meta name="theme-color" content="#0f172a"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="주식 대시보드"/>
+  <link rel="apple-touch-icon" href="./icon-192.png"/>
+
   <link href="./styles.css" rel="stylesheet"/>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
 <header>
-  <h1>주식 매매기록 · 수익률 대시보드</h1>
-  <p class="sub">매수/매도 기록 · 실현/평가 손익 · ISA/일반 분리 · 날짜별 접기/펼치기 · CSV 백업</p>
+  <div class="header-top">
+    <div>
+      <h1>주식 매매기록 · 수익률 대시보드</h1>
+      <p class="sub">매수/매도 기록 · 실현/평가 손익 · ISA/일반 분리 · 날짜별 접기/펼치기 · CSV 백업</p>
+    </div>
+  </div>
+
+  <!-- 탭 네비게이션 -->
+  <nav class="tabs" aria-label="페이지 탭">
+    <button class="tab-btn active" data-tab="tab-dashboard" type="button">대시보드</button>
+    
+    <button class="tab-btn" data-tab="tab-trades" type="button">매매기록</button>
+    <button class="tab-btn" data-tab="tab-monthly" type="button">월별 수익률</button>
+    <button class="tab-btn" data-tab="tab-sync" type="button">구글시트 연동</button>
+    <button class="tab-btn" data-tab="tab-format" type="button">도움말</button>
+  </nav>
 </header>
 
 <main>
-  <section class="card">
+  <!-- 1) 대시보드 -->
+  <section class="card tab-page active" id="tab-dashboard">
     <div class="row">
       <div>
         <label for="asOfDate"><b>기준 날짜</b></label>
@@ -92,24 +117,17 @@
     <div class="note">※ 계산 방식: <b>이동평균(평균단가)</b> 기준. 공매도/마이너스 보유수량은 지원 안 해요.</div>
   </section>
 
-  <section class="card">
+  <!-- 2) 기준일 종가 입력 - 탭에서 제거, 숨김 -->
+  <section class="card tab-page" id="tab-close" style="display:none">
     <div class="row">
       <h2>기준일 종가 입력</h2>
       <div class="grow"></div>
-      <div class="hint">기준 날짜에 대해 종가를 기업별로 한 번만 입력하면 평가손익이 자동 계산돼요. (미입력은 -)</div>
+      <div class="hint">기준 날짜에 대해 종가를 기업별로 입력하면 평가손익이 자동 계산돼요. (미입력은 -)</div>
     </div>
 
-    <div class="row">
-      <div class="bulk-box">
-        <label for="bulkClose"><b>일괄 입력</b> (한 줄에 하나: <code>기업명, 종가</code> 또는 <code>기업명 종가</code>)</label>
-        <textarea id="bulkClose" placeholder="예)
-삼성전자, 71500
-TIGER 미국S&amp;P500 25120" rows="4"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button id="applyBulkCloseBtn">일괄 적용</button>
-          <button class="secondary" id="clearCloseBtn">이 기준일 종가 전체 지우기</button>
-        </div>
-      </div>
+    <div class="row" style="margin-bottom:8px">
+      <button id="addCloseRowBtn">+ 행 추가</button>
+      <button class="secondary" id="clearCloseBtn" style="margin-left:8px">이 기준일 종가 전체 지우기</button>
     </div>
 
     <div class="table-wrap mini">
@@ -119,6 +137,7 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
             <th>기업명</th>
             <th>종가</th>
             <th>기준일</th>
+            <th></th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -126,7 +145,8 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
     </div>
   </section>
 
-  <section class="card">
+  <!-- 3) 데이터 입력(매매기록) -->
+  <section class="card tab-page" id="tab-trades">
     <div class="row">
       <h2>데이터 입력 (매매기록)</h2>
       <div class="grow"></div>
@@ -152,8 +172,9 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
       </div>
     </div>
 
-    <div class="row" style="margin-top:10px">
+    <div class="row" style="margin-top:10px;align-items:center">
       <h3 class="h3" style="font-size:16px;margin:0">현재 보유중</h3>
+      <span id="holdAsOfLabel" style="margin-left:12px;font-size:13px;color:#64748b;font-weight:500"></span>
     </div>
 
     <div class="table-wrap mini">
@@ -165,7 +186,7 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
             <th>보유수량</th>
             <th>평균단가</th>
             <th>보유원가</th>
-            <th>종가</th>
+            <th>종가 입력</th>
             <th>평가손익</th>
             <th>실현손익 누적</th>
             <th>총 손익</th>
@@ -223,7 +244,8 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
     </div>
   </section>
 
-  <section class="card">
+  <!-- 4) 월별 수익률 -->
+  <section class="card tab-page" id="tab-monthly">
     <div class="row">
       <h2>월별 수익률</h2>
       <div class="grow"></div>
@@ -263,13 +285,105 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
     </div>
   </section>
 
-  <section class="card small">
+  <!-- 5) 구글시트 연동(클라우드) -->
+  <section class="card tab-page" id="tab-sync">
+    <div class="row">
+      <h2>구글 스프레드시트 연동</h2>
+      <div class="grow"></div>
+      <div class="hint">PC/모바일 어디서 접속해도 데이터가 유지되게 “클라우드 저장소(구글시트)”로 동기화해요.</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:10px">
+      <div>
+        <label for="gsUrl"><b>Apps Script 배포 URL</b> (웹 앱 /exec)</label>
+        <input id="gsUrl" type="text" placeholder="예) https://script.google.com/macros/s/XXXX/exec" />
+      </div>
+      <div>
+        <label for="gsToken"><b>보안 토큰</b> (내가 정한 비밀번호)</label>
+        <input id="gsToken" type="text" placeholder="예) my-secret" />
+      </div>
+    
+<div class="note" style="margin-top:10px">
+  <b>✅ “암호만”으로 URL 자동 불러오기</b><br/>
+  처음 1번만 <u>URL+토큰+암호</u>로 가입(등록)하면, 다음부터는 <u>암호만</u> 입력해도 URL/토큰이 자동으로 채워져요.
+  <div class="grid-2" style="margin-top:10px">
+    <div>
+      <label for="gsPass"><b>암호</b> (잃어버리면 복구 불가)</label>
+      <input id="gsPass" type="password" placeholder="예) 12자 이상 추천" />
+    </div>
+    <div class="btns" style="align-items:flex-end; justify-content:flex-end">
+      <button class="secondary" id="gsLoginBtn" type="button">암호로 불러오기</button>
+      <button id="gsRegBtn" type="button">처음 1회: 가입(등록)</button>
+    </div>
+  </div>
+  <div class="hint" id="gsEasyHint" style="margin-top:6px">※ 이 기능을 쓰려면 (개발자) 레지스트리 서버를 먼저 만들어야 해요.</div>
+</div>
+
+</div>
+
+    <div class="row" style="margin-top:10px">
+      <label class="switch">
+        <input id="gsAuto" type="checkbox" />
+        <span>변경 시 자동 업로드(권장)</span>
+      </label>
+      <div class="grow"></div>
+      <div class="btns">
+        <button class="secondary" id="gsLoadBtn" type="button">클라우드에서 불러오기</button>
+        <button id="gsSaveBtn" type="button">클라우드에 저장(업로드)</button>
+      </div>
+    </div>
+
+    <div class="note" id="gsStatus">상태: -</div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="hint">백업: 혹시 모를 상황을 대비해 데이터 전체를 파일로 저장/복원할 수 있어요.</div>
+      <div class="grow"></div>
+      <div class="btns">
+        <button class="secondary" id="gsBackupBtn" type="button">백업 다운로드(JSON)</button>
+        <label class="btn-like" for="gsRestoreFile">백업으로 복원</label>
+        <input id="gsRestoreFile" type="file" accept="application/json" style="display:none" />
+      </div>
+    </div>
+
+
+    <details style="margin-top:8px">
+      <summary>설정 방법(처음 한 번만)</summary>
+      <ol class="ol">
+        <li>구글 드라이브 → 새로 만들기 → <b>Google Apps Script</b></li>
+        <li>내가 준 <b>Apps Script 코드</b>를 붙여넣고 저장</li>
+        <li><b>배포</b> → <b>새 배포</b> → 유형: <b>웹 앱</b></li>
+        <li>실행 사용자: <b>나</b> / 접근 권한: <b>모든 사용자</b> (또는 링크가 있는 모든 사용자)</li>
+        <li>배포 URL(/exec)을 위 칸에 붙여넣고, 토큰도 동일하게 입력</li>
+      </ol>
+      <p class="note">※ 토큰은 URL에 노출되지 않게, 앱에서만 보내요. (그래도 <b>아무거나</b> 말고 길게 설정 추천)</p>
+    </details>
+  </section>
+
+  <section class="card small tab-page" id="tab-format">
     <details>
       <summary>CSV 형식</summary>
       <p>헤더: <code>date,company,account,side,price,qty,close</code></p>
       <p><code>side</code>는 <b>BUY</b> 또는 <b>SELL</b> (또는 매수/매도) 가능.</p>
     </details>
   </section>
+
+  <!-- (추가) 종목 실시간 시세 모달 -->
+  <div id="priceModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="priceModalTitle">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="priceModalTitle">-</div>
+          <div class="modal-sub" id="priceModalSub">-</div>
+        </div>
+        <button class="modal-close" type="button" data-modal-close aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="tvWidgetWrap"></div>
+        <div class="modal-note">※ TradingView 위젯(무료)로 표시됩니다. 실시간/지연 여부는 거래소/데이터 제공 조건에 따라 달라요.</div>
+      </div>
+    </div>
+  </div>
 </main>
 
 <footer>
@@ -277,5 +391,80 @@ TIGER 미국S&amp;P500 25120" rows="4"></textarea>
 </footer>
 
 <script src="./app.js"></script>
+<script>
+// ===== Service Worker 등록 (PWA) =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW 등록 완료:', reg.scope))
+      .catch(err => console.log('SW 등록 실패:', err));
+  });
+}
+
+// ===== 홈화면 추가 배너 (iOS 안내 / Android 설치 프롬프트) =====
+(function() {
+  // Android: beforeinstallprompt 이벤트
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    showInstallBanner('android');
+  });
+
+  // iOS: Safari에서 standalone 모드가 아닐 때 안내
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+
+  if (isIos && !isStandalone) {
+    showInstallBanner('ios');
+  }
+
+  function showInstallBanner(type) {
+    // 이미 닫은 경우 표시 안 함
+    if (localStorage.getItem('pwa_banner_dismissed')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'pwa-install-banner';
+    banner.style.cssText = `
+      position:fixed; bottom:0; left:0; right:0; z-index:9999;
+      background:#0f172a; color:#fff; padding:14px 18px;
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      box-shadow:0 -4px 24px rgba(0,0,0,0.3);
+      font-family:system-ui,sans-serif; font-size:14px;
+    `;
+
+    if (type === 'ios') {
+      banner.innerHTML = `
+        <span>📱 홈 화면에 추가하면 앱처럼 사용할 수 있어요!</span>
+        <span style="color:#94a3b8;font-size:12px">Safari 하단 공유 버튼 → '홈 화면에 추가'</span>
+        <button id="pwa-dismiss" style="margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:12px;">닫기</button>
+      `;
+    } else {
+      banner.innerHTML = `
+        <span>📲 이 앱을 설치해서 더 편하게 사용해보세요!</span>
+        <button id="pwa-install-btn" style="background:#3b82f6;border:none;color:#fff;border-radius:8px;padding:8px 16px;cursor:pointer;font-weight:700;font-size:13px;">설치하기</button>
+        <button id="pwa-dismiss" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;">닫기</button>
+      `;
+    }
+
+    document.body.appendChild(banner);
+
+    document.getElementById('pwa-dismiss')?.addEventListener('click', () => {
+      banner.remove();
+      localStorage.setItem('pwa_banner_dismissed', '1');
+    });
+
+    document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        banner.remove();
+      }
+    });
+  }
+})();
+</script>
 </body>
 </html>

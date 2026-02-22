@@ -1,6 +1,6 @@
 *{box-sizing:border-box}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;margin:0;background:#f6f7fb;color:#111}
-header{padding:22px 18px;background:#0f172a;color:#fff}
+header{padding:18px 18px 12px;background:#0f172a;color:#fff}
 h1{margin:0 0 6px 0;font-size:20px}
 .sub{margin:0;color:#cbd5e1;font-size:13px}
 main{max-width:1240px;margin:18px auto;padding:0 14px;display:flex;flex-direction:column;gap:14px}
@@ -12,6 +12,9 @@ main{max-width:1240px;margin:18px auto;padding:0 14px;display:flex;flex-directio
 button,.file{border:1px solid #d1d5db;background:#111827;color:#fff;border-radius:10px;padding:9px 10px;font-weight:800;cursor:pointer}
 button.secondary,.file.secondary{background:#fff;color:#111827}
 button.danger{background:#b91c1c;border-color:#b91c1c}
+button:hover,.file:hover{filter:brightness(1.06)}
+button.secondary:hover,.file.secondary:hover{background:#f8fafc}
+button.danger:hover{filter:brightness(1.08)}
 .file{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:8px}
 .file input{position:absolute;inset:0;opacity:0;cursor:pointer}
 label{display:block;font-size:12px;color:#334155;margin-bottom:6px}
@@ -24,7 +27,18 @@ select{padding:9px 10px}
 .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:10px}
 .table-wrap.mini table{min-width:980px}
 .table-wrap.data-entry{max-height:420px;overflow:auto}
-@media (max-width:900px){.table-wrap.data-entry{max-height:320px} .table-wrap.mini table{min-width:900px}}
+@media (max-width:900px){
+  .table-wrap.data-entry{max-height:320px}
+  .table-wrap.mini table{min-width:900px}
+  .table-wrap.data-entry th,
+  .table-wrap.data-entry td{padding:4px 4px}
+  .table-wrap.data-entry input[type="date"],
+  .table-wrap.data-entry input[type="text"],
+  .table-wrap.data-entry input[type="number"],
+  .table-wrap.data-entry select{padding:3px 4px;font-size:11px}
+  .row-actions{flex-direction:row;flex-wrap:nowrap;gap:3px}
+  .row-actions button{padding:3px 6px;font-size:10px}
+}
 
 table{border-collapse:collapse;width:100%;min-width:1180px}
 th,td{border-bottom:1px solid #e5e7eb;padding:10px 8px;text-align:center;font-size:13px;white-space:nowrap}
@@ -54,6 +68,30 @@ tbody tr:hover{background:#fafafa}
 .seg{display:inline-flex;border:1px solid #d1d5db;border-radius:12px;overflow:hidden;margin-left:8px}
 .seg-btn{border:0;background:#fff;color:#111827;padding:8px 10px;font-weight:800;cursor:pointer}
 .seg-btn.active{background:#111827;color:#fff}
+.seg-btn:hover{background:#f1f5f9}
+.seg-btn.active:hover{filter:brightness(1.06)}
+
+/* 모바일(특히 iOS)에서 클릭/포커스 시 색이 하얗게 뒤집히는 현상 방지 */
+.seg .seg-btn{appearance:none;-webkit-appearance:none}
+.seg .seg-btn:focus{outline:none}
+.seg .seg-btn:active{background:#f1f5f9;color:#111827}
+.seg .seg-btn.active:active{background:#111827;color:#fff}
+/* ===== 탭 UI ===== */
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tab-btn{border:1px solid rgba(255,255,255,0.22);background:rgba(255,255,255,0.08);color:#fff;border-radius:999px;padding:8px 12px;font-weight:900;cursor:pointer}
+.tab-btn:hover{background:rgba(255,255,255,0.18)}
+.tab-btn.active{background:#fff;color:#0f172a;border-color:#fff}
+.tab-btn.active:hover{filter:brightness(0.98)}
+
+.tab-page{display:none}
+.tab-page.active{display:block}
+
+/* sync layout */
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:900px){.grid-2{grid-template-columns:1fr}}
+.switch{display:inline-flex;align-items:center;gap:10px;color:#334155;font-size:13px;font-weight:800}
+.switch input{width:18px;height:18px}
+.ol{margin:8px 0 0 18px;color:#334155}
 
 .charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 @media (max-width:900px){.charts{grid-template-columns:1fr}}
@@ -74,7 +112,8 @@ tr.group-hidden{display:none}
 .group-totals span{background:rgba(255,255,255,0.12);padding:4px 10px;border-radius:999px}
 
 /* 행 액션 */
-.row-actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.row-actions{display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:nowrap}
+.row-actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px}
 .row-actions button{padding:6px 8px;border-radius:10px;font-weight:900;font-size:12px}
 .row-actions button.secondary{background:#fff;color:#111827;border:1px solid #d1d5db}
 .row-actions button.mini-danger{background:#b91c1c;border-color:#b91c1c;color:#fff}
@@ -122,11 +161,15 @@ tr.group-hidden{display:none}
   margin-top: 32px;
   max-height:480px;
   overflow-y:auto;
-  overflow-x:hidden;   /* 가로스크롤 제거 */
+  overflow-x:auto;
 }
 
 table{
   min-width:unset !important;
+}
+
+.table-wrap.data-entry table{
+  min-width:800px;
 }
 
 th,td{
@@ -158,3 +201,166 @@ select{
 textarea{width:100%;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:13px;resize:vertical}
 #closeTable{min-width:420px}
 #closeTable input[type="number"]{width:160px}
+
+
+/* ===== Segment Button Fix ===== */
+
+/* 기본 상태 */
+.segment-btn {
+  background-color: #f2f2f2;
+  color: #111;
+  border: 1px solid #ddd;
+  transition: none;
+}
+
+/* 마우스 올려도 색 유지 */
+.segment-btn:hover {
+  background-color: #f2f2f2;
+  color: #111;
+}
+
+/* ===== 실시간 시세 모달 + 클릭 가능한 기업명 ===== */
+.linklike{
+  background:none;
+  border:0;
+  padding:0;
+  margin:0;
+  font:inherit;
+  color:#2563eb;
+  cursor:pointer;
+  text-decoration:underline;
+  text-underline-offset:2px;
+}
+.linklike:active{transform:translateY(1px)}
+
+.modal{position:fixed;inset:0;display:none;z-index:1000}
+.modal.open{display:block}
+.modal-backdrop{position:absolute;inset:0;background:rgba(2,6,23,.55)}
+.modal-panel{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(720px,calc(100vw - 24px));
+  max-height:calc(100vh - 24px);
+  overflow:auto;
+  background:#fff;
+  border-radius:18px;
+  box-shadow:0 18px 60px rgba(2,6,23,.28);
+  border:1px solid rgba(148,163,184,.35);
+}
+.modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(148,163,184,.35)}
+.modal-title{font-weight:900;font-size:16px}
+.modal-sub{margin-top:4px;font-size:12px;color:#64748b}
+.modal-close{width:36px;height:36px;border-radius:12px;border:1px solid rgba(148,163,184,.45);background:rgba(241,245,249,.7);cursor:pointer}
+.modal-body{padding:14px 16px 18px}
+.modal-note{margin-top:10px;font-size:12px;color:#64748b}
+
+/* 선택된 상태 */
+.segment-btn.active {
+  background-color: #111;
+  color: #fff;
+  border-color: #111;
+}
+
+/* 클릭/포커스 시 색 깨짐 방지 */
+.segment-btn:active,
+.segment-btn:focus {
+  background-color: inherit;
+  color: inherit;
+  outline: none;
+}
+
+
+/* ===== Segmented Filter Button Hover Fix (전체/ISA/일반) =====
+   요구사항: 커서 올려도(hover) 색이 바뀌지 않게 고정
+*/
+.seg-btn:hover{
+  background:#fff !important;
+  color:#111827 !important;
+  filter:none !important;
+}
+.seg-btn.active:hover{
+  background:#111827 !important;
+  color:#fff !important;
+  filter:none !important;
+}
+/* 클릭(active)/포커스도 색 깨짐 방지 */
+.seg .seg-btn:active{
+  background:#fff !important;
+  color:#111827 !important;
+}
+.seg .seg-btn.active:active{
+  background:#111827 !important;
+  color:#fff !important;
+}
+
+
+/* ===== Cloud UI additions ===== */
+.note.ok { border-color: rgba(34,197,94,.35); }
+.note.err { border-color: rgba(239,68,68,.35); }
+.btn-like{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(0,0,0,.08);
+  background:#fff;
+  cursor:pointer;
+  user-select:none;
+  font-weight:600;
+}
+.btn-like:hover{ background:#f6f6f6; }
+
+
+/* ===== PWA / 모바일 최적화 ===== */
+
+/* 노치/홈바 영역 대응 */
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+header {
+  padding-top: max(18px, env(safe-area-inset-top));
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Standalone(앱) 모드에서 상태바 영역 추가 */
+@media (display-mode: standalone) {
+  header {
+    padding-top: max(22px, env(safe-area-inset-top));
+  }
+}
+
+/* 모바일 탭 버튼 스크롤 가능하게 */
+@media (max-width: 600px) {
+  .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+    gap: 6px;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  /* 모바일 KPI 카드 더 compact하게 */
+  .kpi-val { font-size: 15px; }
+  .kpi-title { font-size: 11px; }
+
+  /* 헤더 */
+  h1 { font-size: 17px; }
+  .sub { font-size: 11px; }
+
+  /* main 여백 줄이기 */
+  main { margin: 10px auto; padding: 0 8px; gap: 10px; }
+  .card { padding: 10px; border-radius: 10px; }
+
+  footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
+}

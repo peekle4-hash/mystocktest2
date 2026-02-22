@@ -16,3 +16,29 @@
 
 ## GitHub Pages
 Settings → Pages → Deploy from a branch → main / (root)
+
+## 구글 스프레드시트(클라우드) 연동
+이 버전은 **PC/모바일/다른 브라우저**에서도 동일 데이터를 쓰도록, Apps Script + 구글시트를 DB처럼 쓸 수 있어요.
+
+### 1) Apps Script 만들기
+1. 구글 드라이브 → 새로 만들기 → **Google Apps Script**
+2. `apps_script.gs` 내용을 **Code.gs**에 붙여넣기
+3. 코드 맨 위 `TOKEN = "CHANGE_ME"` 를 원하는 값으로 변경
+4. **배포 → 새 배포 → 웹 앱**
+   - 실행 사용자: **나**
+   - 접근 권한: **모든 사용자**(또는 링크가 있는 모든 사용자)
+5. 배포 후 나오는 URL 중 **/exec** 주소를 복사
+
+### 2) 사이트에 붙이기
+사이트 탭 **구글시트 연동**에서
+- Apps Script 배포 URL(/exec)
+- 보안 토큰(위 TOKEN과 동일)
+
+입력 후 **클라우드에 저장(업로드)** / **클라우드에서 불러오기** 버튼을 누르면 됩니다.
+
+> 팁: “변경 시 자동 업로드”를 켜두면, 입력할 때마다 자동으로 저장돼요.
+
+
+## (옵션) 암호만으로 URL/토큰 불러오기(레지스트리)
+- stock-app/registry_script.gs 를 새 Apps Script 프로젝트에 붙여넣고 웹앱으로 배포
+- 생성된 /exec URL을 stock-app/app.js 의 REGISTRY_URL 에 넣은 뒤 다시 배포

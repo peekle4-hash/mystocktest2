@@ -1,0 +1,23 @@
+{
+  "name": "주식 매매기록 대시보드",
+  "short_name": "주식 대시보드",
+  "description": "매수/매도 기록, 실현/평가 손익, ISA/일반 분리, 월별 수익률",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
