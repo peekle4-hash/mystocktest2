@@ -474,8 +474,19 @@
             <input id="planTarget" type="number" step="any" placeholder="예) 70000" />
           </label>
           <label>
-            <span>수량</span>
+            <span>입력 방식</span>
+            <select id="planMode">
+              <option value="QTY">주수(수량)</option>
+              <option value="AMOUNT">금액(원)</option>
+            </select>
+          </label>
+          <label id="planQtyWrap">
+            <span>수량(주)</span>
             <input id="planQty" type="number" step="any" placeholder="예) 10" />
+          </label>
+          <label id="planAmountWrap" style="display:none">
+            <span>투자금액(원)</span>
+            <input id="planAmount" type="number" step="any" placeholder="예) 10000" />
           </label>
           <label>
             <span>상태</span>
@@ -487,6 +498,8 @@
             </select>
           </label>
         </div>
+
+        <div class="hint" id="planCalcHint" style="margin-top:10px">-</div>
         <label style="display:block;margin-top:10px">
           <span style="display:block;font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px">메모(이유/조건)</span>
           <textarea id="planNote" rows="3" placeholder="예) 리밸런싱, 분할매수 3회"></textarea>

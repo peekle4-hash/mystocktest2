@@ -1112,6 +1112,22 @@ function makeId() {
 
 let planEditing = { type: 'BUY', id: null };
 
+function getPlanMode() {
+  const v = (document.getElementById('planMode')?.value || 'QTY').toString().toUpperCase();
+  return (v === 'AMOUNT') ? 'AMOUNT' : 'QTY';
+}
+
+function setPlanModeUI(mode) {
+  const qtyWrap = document.getElementById('planQtyWrap');
+  const amtWrap = document.getElementById('planAmountWrap');
+  const qtyEl = document.getElementById('planQty');
+  const amtEl = document.getElementById('planAmount');
+  if (qtyWrap) qtyWrap.style.display = (mode === 'QTY') ? '' : 'none';
+  if (amtWrap) amtWrap.style.display = (mode === 'AMOUNT') ? '' : 'none';
+  if (qtyEl) qtyEl.disabled = (mode !== 'QTY');
+  if (amtEl) amtEl.disabled = (mode !== 'AMOUNT');
+}
+
 function openPlanModal(type, existing = null) {
   const modal = document.getElementById('planModal');
   if (!modal) return;
@@ -1124,17 +1140,25 @@ function openPlanModal(type, existing = null) {
 
   const company = document.getElementById('planCompany');
   const target = document.getElementById('planTarget');
+  const modeEl = document.getElementById('planMode');
   const qty = document.getElementById('planQty');
+  const amount = document.getElementById('planAmount');
   const note = document.getElementById('planNote');
   const status = document.getElementById('planStatus');
 
+  const mode = (existing?.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
+
   if (company) company.value = existing?.company || '';
   if (target) target.value = (existing?.targetPrice ?? '');
+  if (modeEl) modeEl.value = mode;
+  setPlanModeUI(mode);
   if (qty) qty.value = (existing?.qty ?? '');
+  if (amount) amount.value = (existing?.amount ?? '');
   if (note) note.value = existing?.note || '';
   if (status) status.value = existing?.status || '대기';
 
   updatePlanCurrentHint();
+  updatePlanCalcHint();
 
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
@@ -1155,6 +1179,34 @@ function updatePlanCurrentHint() {
   const el = document.getElementById('planCurrentHint');
   if (!el) return;
   el.textContent = `현재가(기준일 종가): ${Number.isFinite(cur) ? fmtMoney(cur) + '원' : '-'}`;
+}
+
+function updatePlanCalcHint() {
+  const mode = getPlanMode();
+  const company = document.getElementById('planCompany')?.value || '';
+  const asOfIso = $("asOfDate").value || todayISO();
+  const cur = company ? getCloseFor(asOfIso, company) : NaN;
+  const qty = num(document.getElementById('planQty')?.value);
+  const amount = num(document.getElementById('planAmount')?.value);
+  const el = document.getElementById('planCalcHint');
+  if (!el) return;
+
+  if (!Number.isFinite(cur)) {
+    el.textContent = '현재가(기준일 종가)가 없어서 금액/수량 계산을 못 해요. (보유현황에서 종가 입력해줘)';
+    return;
+  }
+
+  if (mode === 'AMOUNT') {
+    if (!Number.isFinite(amount)) { el.textContent = `예상 수량: -`; return; }
+    const estQty = amount / cur;
+    el.textContent = `예상 수량(현재가 기준): ${fmtQty(estQty)}주`;
+    return;
+  }
+
+  // QTY
+  if (!Number.isFinite(qty)) { el.textContent = `예상 금액(현재가 기준): -`; return; }
+  const estAmt = qty * cur;
+  el.textContent = `예상 금액(현재가 기준): ${fmtMoney(estAmt)}원`;
 }
 
 function planDiffBadge(type, target, current) {
@@ -1198,11 +1250,18 @@ function renderPlans() {
     for (const it of sorted) {
       const company = it.company || '';
       const target = Number(it.targetPrice);
+      const mode = (it.mode || 'QTY').toString().toUpperCase() === 'AMOUNT' ? 'AMOUNT' : 'QTY';
       const qty = Number(it.qty);
+      const amount = Number(it.amount);
       const status = it.status || '대기';
       const note = it.note || '';
       const cur = company ? getCloseFor(asOfIso, company) : NaN;
       const badge = planDiffBadge(type, target, cur);
+
+      const showQty = (mode === 'QTY') ? (Number.isFinite(qty) ? fmtQty(qty) + '주' : '-') : (Number.isFinite(amount) && Number.isFinite(cur) ? fmtQty(amount / cur) + '주' : '-');
+      const showAmt = (mode === 'AMOUNT') ? (Number.isFinite(amount) ? fmtMoney(amount) + '원' : '-') : (Number.isFinite(qty) && Number.isFinite(cur) ? fmtMoney(qty * cur) + '원' : '-');
+      const qtyLabel = (mode === 'AMOUNT') ? '예상 수량' : '수량';
+      const amtLabel = (mode === 'QTY') ? '예상 금액' : '투자금액';
 
       const card = document.createElement('div');
       card.className = 'plan-card';
@@ -1224,8 +1283,12 @@ function renderPlans() {
             <div class="v">${Number.isFinite(target) ? fmtMoney(target) + '원' : '-'}</div>
           </div>
           <div class="plan-kv">
-            <div class="k">수량</div>
-            <div class="v">${Number.isFinite(qty) ? fmtQty(qty) : '-'}</div>
+            <div class="k">${qtyLabel}</div>
+            <div class="v">${showQty}</div>
+          </div>
+          <div class="plan-kv">
+            <div class="k">${amtLabel}</div>
+            <div class="v">${showAmt}</div>
           </div>
         </div>
 
@@ -1295,14 +1358,23 @@ function setupPlanUI() {
   });
 
   // 입력 변경 시 현재가 힌트 업데이트
-  document.getElementById('planCompany')?.addEventListener('input', updatePlanCurrentHint);
+  document.getElementById('planCompany')?.addEventListener('input', () => { updatePlanCurrentHint(); updatePlanCalcHint(); });
+  document.getElementById('planMode')?.addEventListener('change', () => {
+    const mode = getPlanMode();
+    setPlanModeUI(mode);
+    updatePlanCalcHint();
+  });
+  document.getElementById('planQty')?.addEventListener('input', updatePlanCalcHint);
+  document.getElementById('planAmount')?.addEventListener('input', updatePlanCalcHint);
 
   // 저장
   document.getElementById('planSaveBtn')?.addEventListener('click', () => {
     const type = planEditing.type;
     const company = normCompany(document.getElementById('planCompany')?.value || '');
     const targetPrice = num(document.getElementById('planTarget')?.value);
+    const mode = getPlanMode();
     const qty = num(document.getElementById('planQty')?.value);
+    const amount = num(document.getElementById('planAmount')?.value);
     const note = (document.getElementById('planNote')?.value || '').toString().trim();
     const status = (document.getElementById('planStatus')?.value || '대기').toString();
 
@@ -1316,10 +1388,20 @@ function setupPlanUI() {
       document.getElementById('planTarget')?.focus();
       return;
     }
-    if (!Number.isFinite(qty)) {
-      alert('수량을 숫자로 입력해줘');
-      document.getElementById('planQty')?.focus();
-      return;
+
+    // mode별 필수값 체크
+    if (mode === 'AMOUNT') {
+      if (!Number.isFinite(amount)) {
+        alert('투자금액을 숫자로 입력해줘');
+        document.getElementById('planAmount')?.focus();
+        return;
+      }
+    } else {
+      if (!Number.isFinite(qty)) {
+        alert('수량을 숫자로 입력해줘');
+        document.getElementById('planQty')?.focus();
+        return;
+      }
     }
 
     const arr = loadPlans(type);
@@ -1328,11 +1410,11 @@ function setupPlanUI() {
     if (planEditing.id) {
       const idx = arr.findIndex(x => x.id === planEditing.id);
       const base = idx >= 0 ? arr[idx] : { id: planEditing.id };
-      const next = { ...base, company, targetPrice, qty, note, status, updatedAt: now };
+      const next = { ...base, company, targetPrice, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, updatedAt: now };
       if (idx >= 0) arr[idx] = next;
       else arr.push(next);
     } else {
-      arr.push({ id: makeId(), company, targetPrice, qty, note, status, createdAt: now, updatedAt: now });
+      arr.push({ id: makeId(), company, targetPrice, mode, qty: Number.isFinite(qty) ? qty : null, amount: Number.isFinite(amount) ? amount : null, note, status, createdAt: now, updatedAt: now });
     }
 
     savePlans(type, arr);
