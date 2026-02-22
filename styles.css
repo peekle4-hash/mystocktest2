@@ -364,3 +364,21 @@ header {
 
   footer { padding-bottom: max(16px, env(safe-area-inset-bottom)); }
 }
+/* 모달 닫기 버튼(×) 안 보이는 문제 해결 */
+.modal-close,
+#modalClose,
+.close-modal,
+.modal .close {
+  background: rgba(0, 0, 0, 0.08) !important; /* 옅은 회색 배경 */
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+  color: #111 !important;                   /* X 색 */
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+}
+
+/* hover 시 더 잘 보이게 */
+.modal-close:hover,
+#modalClose:hover,
+.close-modal:hover,
+.modal .close:hover {
+  background: rgba(0, 0, 0, 0.14) !important;
+}
